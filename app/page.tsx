@@ -149,7 +149,7 @@ const maintenanceItems = [
   { id: 20, item: "Data log book" },
 ];
 
-type StatusType = 'Good' | 'Not Good' | 'N/A' | 'Approved' | '';
+type StatusType = 'Good' | 'Not Good' | 'N/A' | '';
 type QCStatusType = 'Approved' | 'Revision Required' | '';
 type UserRole = 'maintenance' | 'qc' | 'sales' | null;
 type MenuType = 'dashboard' | 'newPemeriksaan' | 'newPemeliharaan' | 'viewReport';
@@ -427,7 +427,7 @@ function ReportForm({
     return allApproved;
   };
 
-  // Handler Approve per item (Pemeriksaan)
+  // Handler Approve per item (Pemeriksaan) - HANYA UNTUK NOT GOOD
   const handleApproveItem = (id: number) => {
     if (!isQC || isReadOnly) return;
     if (formData.status !== 'maintenance_done' && formData.status !== 'revision') return;
@@ -444,7 +444,7 @@ function ReportForm({
     }));
   };
 
-  // Handler Approve per item (Pemeliharaan)
+  // Handler Approve per item (Pemeliharaan) - HANYA UNTUK NOT GOOD
   const handleApproveMaintenanceItem = (unitIndex: number, id: number) => {
     if (!isQC || isReadOnly) return;
     if (formData.status !== 'maintenance_done' && formData.status !== 'revision') return;
@@ -1556,7 +1556,6 @@ function ReportForm({
                       const isMaintEditable = isMaintenance && !isReadOnly && (formData.status === 'qc_approved' || formData.status === 'revision');
                       const canApprove = isQC && !isReadOnly && (formData.status === 'maintenance_done' || formData.status === 'revision') && isNotGood && !isApproved;
                       
-                      // HITUNG BOBOT DENGAN PEMBULATAN YANG BENAR
                       const hitung = originalItem ? (isGood ? originalItem.weight : (isNotGood ? (isApproved ? 0 : -originalItem.weight) : 0)) : 0;
                       const bobotPersen = (originalItem?.weight || 0) * 100;
                       const hitungPersen = (hitung * 100);
