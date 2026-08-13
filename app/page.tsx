@@ -209,7 +209,7 @@ interface Report {
 }
 
 // ============================================
-// KOMPONEN LOGIN
+// KOMPONEN LOGIN - TANPA DEMO CREDENTIALS
 // ============================================
 function LoginPage({ onLogin }: { onLogin: (role: UserRole) => void }) {
   const [username, setUsername] = useState('');
@@ -300,11 +300,13 @@ function LoginPage({ onLogin }: { onLogin: (role: UserRole) => void }) {
 
           {error && <div className="text-red-500 text-sm">{error}</div>}
 
-          <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-500">
-            <p className="font-semibold text-gray-600">🔑 Demo Credentials:</p>
-            <p>QC: qc / qc123</p>
-            <p>Maintenance: mainten / m123</p>
-            <p>Sales: sales / s123</p>
+          {/* ========================================== */}
+          {/* HANYA HAKI / COPYRIGHT - TANPA DEMO CREDENTIALS */}
+          {/* ========================================== */}
+          <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-500 text-center border border-gray-200">
+            <p className="font-semibold text-blue-700">PT Louserindo Megah Permai</p>
+            <p className="text-gray-400">Elevator Quality Control System v1.0</p>
+            <p className="text-[10px] text-gray-400 mt-1">© 2026 - All Rights Reserved</p>
           </div>
 
           <button
@@ -1631,7 +1633,7 @@ function ReportForm({
 
         <div className="text-center text-[10px] text-gray-400 border-t border-gray-200 pt-3 mt-4 print:block hidden">
           <p>Dicetak: {new Date().toLocaleString('id-ID')}</p>
-          <p>© {new Date().getFullYear()} Louserindo Megah Permai - ELEVATE QC</p>
+          <p>© 2026 PT Louserindo Megah Permai - ELEVATE QC</p>
         </div>
       </div>
     </form>
