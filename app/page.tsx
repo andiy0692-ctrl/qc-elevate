@@ -149,14 +149,13 @@ const maintenanceItems = [
   { id: 20, item: "Data log book" },
 ];
 
-type StatusType = 'Good' | 'Not Good' | 'N/A' | '';
+type StatusType = 'Good' | 'Not Good' | 'N/A' | 'Approved' | '';
 type QCStatusType = 'Approved' | 'Revision Required' | '';
 type UserRole = 'maintenance' | 'qc' | 'sales' | null;
 type MenuType = 'dashboard' | 'newPemeriksaan' | 'newPemeliharaan' | 'viewReport';
 type SortOrder = 'terbaru' | 'terlama';
 type ReportType = 'pemeriksaan' | 'pemeliharaan';
 
-// Data unit untuk pemeliharaan
 interface UnitData {
   unitNumber: string;
   projectCode: string;
@@ -177,6 +176,7 @@ interface UnitData {
     photoBefore: string | null;
     photoAfter: string | null;
     repairNote: string;
+    isApproved: boolean;
   }[];
 }
 
@@ -193,6 +193,7 @@ interface Report {
     photoBefore: string | null;
     photoAfter: string | null;
     repairNote: string;
+    isApproved: boolean;
   }[];
   attachment: string | null;
   attachmentName: string | null;
@@ -209,7 +210,7 @@ interface Report {
 }
 
 // ============================================
-// KOMPONEN LOGIN - TANPA DEMO CREDENTIALS
+// KOMPONEN LOGIN
 // ============================================
 function LoginPage({ onLogin }: { onLogin: (role: UserRole) => void }) {
   const [username, setUsername] = useState('');
@@ -300,9 +301,6 @@ function LoginPage({ onLogin }: { onLogin: (role: UserRole) => void }) {
 
           {error && <div className="text-red-500 text-sm">{error}</div>}
 
-          {/* ========================================== */}
-          {/* HANYA HAKI / COPYRIGHT - TANPA DEMO CREDENTIALS */}
-          {/* ========================================== */}
           <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-500 text-center border border-gray-200">
             <p className="font-semibold text-blue-700">PT Louserindo Megah Permai</p>
             <p className="text-gray-400">Elevator Quality Control System v1.0</p>
@@ -376,6 +374,7 @@ function ReportForm({
         photoBefore: null,
         photoAfter: null,
         repairNote: '',
+        isApproved: false,
       })),
     };
 
@@ -392,6 +391,7 @@ function ReportForm({
         photoBefore: null,
         photoAfter: null,
         repairNote: '',
+        isApproved: false,
       })),
       attachment: null,
       attachmentName: null,
@@ -408,7 +408,62 @@ function ReportForm({
     };
   });
 
-  // Handler untuk mengubah jumlah unit (hanya QC saat draft)
+  // CEK APAKAH SEMUA ITEM NOT GOOD SUDAH DIAPPROVE
+  const isAllNotGoodApproved = () => {
+    const notGoodItems = formData.inspectionData.filter((item: any) => item.status === 'Not Good');
+    if (notGoodItems.length === 0) return true;
+    return notGoodItems.every((item: any) => item.isApproved === true);
+  };
+
+  const isAllMaintenanceNotGoodApproved = () => {
+    let allApproved = true;
+    formData.units.forEach((unit: UnitData) => {
+      const notGoodItems = unit.maintenanceData.filter((item: any) => item.status === 'Not Good');
+      if (notGoodItems.length > 0) {
+        const allApprovedInUnit = notGoodItems.every((item: any) => item.isApproved === true);
+        if (!allApprovedInUnit) allApproved = false;
+      }
+    });
+    return allApproved;
+  };
+
+  // Handler Approve per item (Pemeriksaan)
+  const handleApproveItem = (id: number) => {
+    if (!isQC || isReadOnly) return;
+    if (formData.status !== 'maintenance_done' && formData.status !== 'revision') return;
+    
+    const item = formData.inspectionData.find((i: any) => i.id === id);
+    if (!item || item.status !== 'Not Good') return;
+    if (item.isApproved) return;
+
+    setFormData((prev: any) => ({
+      ...prev,
+      inspectionData: prev.inspectionData.map((item: any) =>
+        item.id === id ? { ...item, isApproved: true } : item
+      ),
+    }));
+  };
+
+  // Handler Approve per item (Pemeliharaan)
+  const handleApproveMaintenanceItem = (unitIndex: number, id: number) => {
+    if (!isQC || isReadOnly) return;
+    if (formData.status !== 'maintenance_done' && formData.status !== 'revision') return;
+    
+    const item = formData.units[unitIndex].maintenanceData.find((i: any) => i.id === id);
+    if (!item || item.status !== 'Not Good') return;
+    if (item.isApproved) return;
+
+    setFormData((prev: any) => {
+      const newUnits = [...prev.units];
+      const newData = newUnits[unitIndex].maintenanceData.map((item: any) =>
+        item.id === id ? { ...item, isApproved: true } : item
+      );
+      newUnits[unitIndex] = { ...newUnits[unitIndex], maintenanceData: newData };
+      return { ...prev, units: newUnits };
+    });
+  };
+
+  // Handler untuk mengubah jumlah unit
   const handleJumlahUnitChange = (value: number) => {
     if (!isQC || isReadOnly || formData.status !== 'draft') return;
     if (isPemeriksaan) return;
@@ -441,6 +496,7 @@ function ReportForm({
             photoBefore: null,
             photoAfter: null,
             repairNote: '',
+            isApproved: false,
           })),
         });
       }
@@ -455,7 +511,6 @@ function ReportForm({
     }));
   };
 
-  // Handler untuk update data unit tertentu
   const updateUnitData = (index: number, field: string, value: string) => {
     if (isReadOnly) return;
     if (!isQC) return;
@@ -468,13 +523,11 @@ function ReportForm({
     });
   };
 
-  // Handler untuk teknisiName (hanya maintenance)
   const handleTeknisiNameChange = (name: string) => {
     if (!isMaintenance || isReadOnly) return;
     setFormData((prev: any) => ({ ...prev, teknisiName: name }));
   };
 
-  // Handler untuk status maintenance per unit
   const handleMaintenanceStatusChange = (unitIndex: number, id: number, status: StatusType) => {
     if (!isQC || isReadOnly) return;
     if (formData.status !== 'draft') return;
@@ -482,7 +535,7 @@ function ReportForm({
     setFormData((prev: any) => {
       const newUnits = [...prev.units];
       const newData = newUnits[unitIndex].maintenanceData.map((item: any) =>
-        item.id === id ? { ...item, status } : item
+        item.id === id ? { ...item, status, isApproved: false } : item
       );
       newUnits[unitIndex] = { ...newUnits[unitIndex], maintenanceData: newData };
       return { ...prev, units: newUnits };
@@ -558,16 +611,20 @@ function ReportForm({
   // Handler untuk inspection data (pemeriksaan)
   const handleStatusChange = (id: number, status: StatusType) => {
     if (!isQC || isReadOnly) return;
+    if (formData.status !== 'draft') return;
+    
     setFormData((prev: any) => ({
       ...prev,
       inspectionData: prev.inspectionData.map((item: any) =>
-        item.id === id ? { ...item, status, finding: status === 'Good' || status === 'N/A' ? '' : item.finding } : item
+        item.id === id ? { ...item, status, finding: status === 'Good' || status === 'N/A' ? '' : item.finding, isApproved: false } : item
       ),
     }));
   };
 
   const handleFindingChange = (id: number, finding: string) => {
     if (!isQC || isReadOnly) return;
+    if (formData.status !== 'draft') return;
+    
     setFormData((prev: any) => ({
       ...prev,
       inspectionData: prev.inspectionData.map((item: any) =>
@@ -578,6 +635,8 @@ function ReportForm({
 
   const handlePhotoBeforeChange = (id: number, event: React.ChangeEvent<HTMLInputElement>) => {
     if (!isQC || isReadOnly) return;
+    if (formData.status !== 'draft') return;
+    
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -620,7 +679,6 @@ function ReportForm({
     }));
   };
 
-  // Handler untuk attachment
   const handleAttachmentChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (isReadOnly) return;
     const file = event.target.files?.[0];
@@ -649,21 +707,26 @@ function ReportForm({
   };
 
   // ============================================
-  // HITUNG SCORE PEMELIHARAAN per unit (MAX 100)
+  // HITUNG SCORE
   // ============================================
   const calculateUnitScore = (unitData: UnitData) => {
     const totalItems = unitData.maintenanceData?.length || 0;
     let goodCount = 0;
     let notGoodCount = 0;
     let naCount = 0;
+    let approvedCount = 0;
 
     unitData.maintenanceData?.forEach((item: any) => {
-      if (item.status === 'Good') goodCount++;
-      else if (item.status === 'Not Good') notGoodCount++;
-      else if (item.status === 'N/A') naCount++;
+      if (item.status === 'Good' || (item.status === 'Not Good' && item.isApproved)) {
+        goodCount++;
+        if (item.status === 'Not Good' && item.isApproved) approvedCount++;
+      } else if (item.status === 'Not Good' && !item.isApproved) {
+        notGoodCount++;
+      } else if (item.status === 'N/A') {
+        naCount++;
+      }
     });
 
-    // Score: Good = 5, Not Good = 0, N/A = 0
     const totalScore = goodCount * 5;
     const maxScore = totalItems * 5;
     const percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
@@ -673,15 +736,13 @@ function ReportForm({
       goodCount,
       notGoodCount,
       naCount,
+      approvedCount,
       totalScore,
       maxScore,
       percentage: Math.round(percentage),
     };
   };
 
-  // ============================================
-  // HITUNG TOTAL SCORE SEMUA UNIT (MAX 100)
-  // ============================================
   const calculateTotalScore = () => {
     if (!formData.units || formData.units.length === 0) {
       return { totalScore: 0, maxScore: 0, totalItems: 0, percentage: 0 };
@@ -751,6 +812,26 @@ function ReportForm({
       alert(`✅ Data ${isPemeriksaan ? 'Pemeriksaan' : 'Pemeliharaan'} dikirim ke Maintenance!`);
     } else if (isQC && formData.status === 'maintenance_done') {
       if (action === 'approve') {
+        // Cek apakah semua Not Good sudah di-approve
+        if (isPemeriksaan) {
+          const notGoodItems = formData.inspectionData.filter((item: any) => item.status === 'Not Good');
+          const unapprovedItems = notGoodItems.filter((item: any) => !item.isApproved);
+          if (unapprovedItems.length > 0) {
+            alert(`⚠️ Masih ada ${unapprovedItems.length} item Not Good yang belum di-approve!`);
+            return;
+          }
+        } else if (isPemeliharaan) {
+          let unapprovedCount = 0;
+          formData.units.forEach((unit: UnitData) => {
+            const notGoodItems = unit.maintenanceData.filter((item: any) => item.status === 'Not Good' && !item.isApproved);
+            unapprovedCount += notGoodItems.length;
+          });
+          if (unapprovedCount > 0) {
+            alert(`⚠️ Masih ada ${unapprovedCount} item Not Good yang belum di-approve!`);
+            return;
+          }
+        }
+        
         updatedData = {
           ...formData,
           qcVerification: {
@@ -819,12 +900,11 @@ function ReportForm({
   const isApproved = formData.status === 'approved' || formData.status === 'qc_approved';
 
   const typeLabel = isPemeriksaan ? 'Pemeriksaan' : 'Pemeliharaan';
+  
+  const allNotGoodApproved = isPemeriksaan ? isAllNotGoodApproved() : isAllMaintenanceNotGoodApproved();
+  const canFinalApprove = formData.status === 'maintenance_done' && allNotGoodApproved;
 
-  // ============================================
-  // KOMPONEN INPUT NAMA TEKNISI (untuk Pemeliharaan & Pemeriksaan)
-  // ============================================
   const renderTeknisiInput = () => {
-    // Untuk maintenance: tampilkan input di semua status yang membutuhkan
     if (isMaintenance && !isReadOnly && (formData.status === 'qc_approved' || formData.status === 'revision')) {
       return (
         <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mb-6">
@@ -852,7 +932,6 @@ function ReportForm({
       );
     }
 
-    // Tampilkan nama teknisi jika sudah diisi (untuk semua role)
     if (formData.teknisiName) {
       return (
         <div className="bg-blue-50 p-3 rounded-lg border border-blue-200 mb-6">
@@ -865,7 +944,6 @@ function ReportForm({
       );
     }
 
-    // Jika belum diisi dan sedang dalam status yang membutuhkan, tampilkan peringatan
     if (isMaintenance && (formData.status === 'qc_approved' || formData.status === 'revision') && !formData.teknisiName) {
       return (
         <div className="bg-red-50 p-4 rounded-lg border border-red-200 mb-6">
@@ -893,7 +971,20 @@ function ReportForm({
           {isQC && formData.status === 'maintenance_done' && (
             <>
               <button type="button" onClick={() => handleKirim('revision')} className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-2 rounded-lg">🔄 Revisi</button>
-              <button type="button" onClick={() => handleKirim('approve')} className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg">✅ Approve (Final)</button>
+              <button 
+                type="button" 
+                onClick={() => {
+                  if (!canFinalApprove) {
+                    alert('⚠️ Masih ada item Not Good yang belum di-approve!');
+                    return;
+                  }
+                  handleKirim('approve');
+                }} 
+                className={`px-6 py-2 rounded-lg ${canFinalApprove ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-gray-400 text-gray-600 cursor-not-allowed'}`}
+                disabled={!canFinalApprove}
+              >
+                ✅ Approve (Final)
+              </button>
             </>
           )}
 
@@ -948,6 +1039,12 @@ function ReportForm({
           )}
 
           {isReadOnly && <span className="text-sm text-gray-400 self-center">🔒 Mode Read-Only</span>}
+          
+          {isQC && formData.status === 'maintenance_done' && (
+            <span className="text-sm text-orange-500 self-center">
+              {allNotGoodApproved ? '✅ Semua Not Good sudah di-approve!' : '⚠️ Approve setiap item Not Good yang sudah diperbaiki'}
+            </span>
+          )}
         </div>
       </div>
 
@@ -958,14 +1055,8 @@ function ReportForm({
           <p className="text-xs text-gray-400 mt-1">Laporan {typeLabel}</p>
         </div>
 
-        {/* ============================================ */}
-        {/* INPUT NAMA TEKNISI - UNTUK PEMELIHARAAN & PEMERIKSAAN */}
-        {/* ============================================ */}
         {renderTeknisiInput()}
 
-        {/* ============================================ */}
-        {/* PEMELIHARAAN - JUMLAH UNIT DI PALING ATAS */}
-        {/* ============================================ */}
         {isPemeliharaan && isQC && !isReadOnly && formData.status === 'draft' && (
           <section className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden mb-6">
             <div className="bg-blue-700 px-6 py-3">
@@ -985,7 +1076,7 @@ function ReportForm({
                     onChange={(e) => handleJumlahUnitChange(Number(e.target.value))}
                     className="w-full px-4 py-3 text-lg border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
                   />
-                  <p className="text-xs text-gray-400 mt-2 text-center">Maksimal 100 unit. Jumlah unit akan menentukan berapa data pemeliharaan yang dibuat.</p>
+                  <p className="text-xs text-gray-400 mt-2 text-center">Maksimal 100 unit.</p>
                   <p className="text-sm text-blue-600 mt-2 text-center font-semibold">
                     {selectedJumlahUnit} Unit {selectedJumlahUnit > 1 ? 'terpilih' : 'terpilih'}
                   </p>
@@ -995,7 +1086,6 @@ function ReportForm({
           </section>
         )}
 
-        {/* Tampilkan jumlah unit untuk semua role (read-only) */}
         {isPemeliharaan && (isReadOnly || !isQC || formData.status !== 'draft') && formData.jumlahUnit && (
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-6">
             <div className="flex items-center justify-between">
@@ -1005,9 +1095,6 @@ function ReportForm({
           </div>
         )}
 
-        {/* ============================================ */}
-        {/* DATA UMUM & DATA PEMELIHARAAN PER UNIT */}
-        {/* ============================================ */}
         {isPemeliharaan && (
           <>
             {formData.units && formData.units.map((unit: UnitData, unitIndex: number) => {
@@ -1024,7 +1111,6 @@ function ReportForm({
                     </span>
                   </div>
                   
-                  {/* Data Umum per Unit */}
                   <div className="p-6 border-b border-gray-200">
                     <h3 className="text-sm font-semibold text-gray-600 mb-3">Data Umum</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1129,7 +1215,6 @@ function ReportForm({
                     </div>
                   </div>
 
-                  {/* Data Pemeliharaan per Unit */}
                   <div className="p-4 overflow-x-auto">
                     <h3 className="text-sm font-semibold text-gray-600 mb-3">Data Pemeliharaan</h3>
                     <table className="w-full border-collapse print:table-fixed" style={{ fontSize: '14px' }}>
@@ -1142,14 +1227,17 @@ function ReportForm({
                           <th className="text-left py-2 px-2 font-semibold text-gray-700 w-24" style={{ fontSize: '13px' }}>Foto Sebelum</th>
                           <th className="text-left py-2 px-2 font-semibold text-gray-700 w-24" style={{ fontSize: '13px' }}>Foto Setelah</th>
                           <th className="text-left py-2 px-2 font-semibold text-gray-700 w-32" style={{ fontSize: '13px' }}>Catatan Perbaikan</th>
+                          <th className="text-left py-2 px-2 font-semibold text-gray-700 w-20" style={{ fontSize: '13px' }}>Approve QC</th>
                         </tr>
                       </thead>
                       <tbody>
                         {unit.maintenanceData.map((item: any) => {
                           const originalItem = maintenanceItems.find(i => i.id === item.id);
                           const isNotGood = item.status === 'Not Good';
+                          const isApproved = item.isApproved;
                           const isEditable = isQC && !isReadOnly && (formData.status === 'draft');
                           const isMaintEditable = isMaintenance && !isReadOnly && (formData.status === 'qc_approved' || formData.status === 'revision');
+                          const canApprove = isQC && !isReadOnly && (formData.status === 'maintenance_done' || formData.status === 'revision') && isNotGood && !isApproved;
 
                           return (
                             <tr key={item.id} className="border-b border-gray-100 print:break-inside-avoid">
@@ -1174,10 +1262,13 @@ function ReportForm({
                                 ) : (
                                   <span className={`inline-flex px-2 py-1 rounded-full font-semibold ${
                                     item.status === 'Good' ? 'bg-green-100 text-green-800' :
-                                    item.status === 'Not Good' ? 'bg-red-100 text-red-800' :
+                                    item.status === 'Not Good' && isApproved ? 'bg-green-300 text-green-900' :
+                                    item.status === 'Not Good' && !isApproved ? 'bg-red-100 text-red-800' :
                                     item.status === 'N/A' ? 'bg-gray-200 text-gray-500' :
                                     'bg-gray-100 text-gray-500'
-                                  }`} style={{ fontSize: '12px' }}>{item.status || '-'}</span>
+                                  }`} style={{ fontSize: '12px' }}>
+                                    {item.status === 'Not Good' && isApproved ? '✅ Approved' : item.status || '-'}
+                                  </span>
                                 )}
                               </td>
                               <td className="py-2 px-2 align-top">
@@ -1215,6 +1306,23 @@ function ReportForm({
                                   <div style={{ fontSize: '13px' }} className="text-gray-600">{item.repairNote || '-'}</div>
                                 )}
                               </td>
+                              <td className="py-2 px-2 align-top text-center">
+                                {canApprove ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleApproveMaintenanceItem(unitIndex, item.id)}
+                                    className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-xs font-medium transition"
+                                  >
+                                    ✅ Approve
+                                  </button>
+                                ) : isApproved ? (
+                                  <span className="text-xs text-green-600 font-semibold">✅ Approved</span>
+                                ) : item.status === 'Not Good' && !isApproved ? (
+                                  <span className="text-xs text-gray-400">Menunggu Approve</span>
+                                ) : (
+                                  <span className="text-xs text-gray-300">-</span>
+                                )}
+                              </td>
                             </tr>
                           );
                         })}
@@ -1222,7 +1330,6 @@ function ReportForm({
                     </table>
                   </div>
 
-                  {/* Score per Unit - MAX 100 */}
                   <div className="p-4 bg-gray-50 border-t border-gray-200">
                     <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
                       <div className="bg-white p-3 rounded-lg text-center border border-gray-200">
@@ -1252,7 +1359,6 @@ function ReportForm({
               );
             })}
 
-            {/* Total Score Semua Unit - MAX 100 */}
             {formData.units && formData.units.length > 0 && (
               <section className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden mb-6">
                 <div className="bg-purple-700 px-6 py-3">
@@ -1286,12 +1392,8 @@ function ReportForm({
           </>
         )}
 
-        {/* ============================================ */}
-        {/* PEMERIKSAAN - TETAP SAMA */}
-        {/* ============================================ */}
         {isPemeriksaan && (
           <>
-            {/* DATA UMUM - Pemeriksaan */}
             <section className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden mb-6">
               <div className="bg-blue-700 px-6 py-3"><h2 className="text-lg font-semibold text-white">Data Umum</h2></div>
               <div className="p-6">
@@ -1398,7 +1500,6 @@ function ReportForm({
               </div>
             </section>
 
-            {/* STATUS */}
             <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-6">
               <div className="flex flex-wrap items-center gap-4">
                 <span className="text-sm font-medium text-gray-600">Status:</span>
@@ -1422,7 +1523,6 @@ function ReportForm({
               </div>
             </div>
 
-            {/* DATA INSPEKSI */}
             <section className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden mb-6 print:break-inside-avoid">
               <div className="bg-blue-700 px-6 py-3 flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-white">Daftar Simak Pemeriksaan (116 Item)</h2>
@@ -1442,6 +1542,7 @@ function ReportForm({
                       <th className="text-left py-2 px-2 font-semibold text-gray-700 w-24" style={{ fontSize: '13px' }}>Foto Sebelum</th>
                       <th className="text-left py-2 px-2 font-semibold text-gray-700 w-24" style={{ fontSize: '13px' }}>Foto Setelah</th>
                       <th className="text-left py-2 px-2 font-semibold text-gray-700 w-32" style={{ fontSize: '13px' }}>Catatan Perbaikan</th>
+                      <th className="text-left py-2 px-2 font-semibold text-gray-700 w-20" style={{ fontSize: '13px' }}>Approve QC</th>
                       <th className="text-left py-2 px-2 font-semibold text-gray-700 w-16" style={{ fontSize: '13px' }}>Hitung</th>
                     </tr>
                   </thead>
@@ -1450,9 +1551,15 @@ function ReportForm({
                       const originalItem = inspectionItems.find(i => i.id === item.id);
                       const isNotGood = item.status === 'Not Good';
                       const isGood = item.status === 'Good';
+                      const isApproved = item.isApproved;
                       const isEditable = isQC && !isReadOnly && (formData.status === 'draft');
                       const isMaintEditable = isMaintenance && !isReadOnly && (formData.status === 'qc_approved' || formData.status === 'revision');
-                      const hitung = originalItem ? (isGood ? originalItem.weight : (isNotGood ? -originalItem.weight : 0)) : 0;
+                      const canApprove = isQC && !isReadOnly && (formData.status === 'maintenance_done' || formData.status === 'revision') && isNotGood && !isApproved;
+                      
+                      // HITUNG BOBOT DENGAN PEMBULATAN YANG BENAR
+                      const hitung = originalItem ? (isGood ? originalItem.weight : (isNotGood ? (isApproved ? 0 : -originalItem.weight) : 0)) : 0;
+                      const bobotPersen = (originalItem?.weight || 0) * 100;
+                      const hitungPersen = (hitung * 100);
 
                       return (
                         <tr key={item.id} className="border-b border-gray-100 print:break-inside-avoid">
@@ -1460,7 +1567,7 @@ function ReportForm({
                           <td className="py-2 px-2 text-gray-600 align-top uppercase font-medium" style={{ fontSize: '12px' }}>{originalItem?.category || '-'}</td>
                           <td className="py-2 px-2 text-gray-800 align-top" style={{ fontSize: '13px' }}>{originalItem?.item || '-'}</td>
                           <td className="py-2 px-2 text-gray-600 align-top" style={{ fontSize: '12px' }}>{originalItem?.priority || '-'}</td>
-                          <td className="py-2 px-2 text-gray-600 align-top" style={{ fontSize: '12px' }}>{(originalItem?.weight || 0) * 100}%</td>
+                          <td className="py-2 px-2 text-gray-600 align-top" style={{ fontSize: '12px' }}>{bobotPersen.toFixed(1)}%</td>
                           <td className="py-2 px-2 align-top">
                             {isEditable ? (
                               <div className="flex flex-col gap-1">
@@ -1480,10 +1587,13 @@ function ReportForm({
                             ) : (
                               <span className={`inline-flex px-2 py-1 rounded-full font-semibold ${
                                 item.status === 'Good' ? 'bg-green-100 text-green-800' :
-                                item.status === 'Not Good' ? 'bg-red-100 text-red-800' :
+                                item.status === 'Not Good' && isApproved ? 'bg-green-300 text-green-900' :
+                                item.status === 'Not Good' && !isApproved ? 'bg-red-100 text-red-800' :
                                 item.status === 'N/A' ? 'bg-gray-200 text-gray-500' :
                                 'bg-gray-100 text-gray-500'
-                              }`} style={{ fontSize: '12px' }}>{item.status || '-'}</span>
+                              }`} style={{ fontSize: '12px' }}>
+                                {item.status === 'Not Good' && isApproved ? '✅ Approved' : item.status || '-'}
+                              </span>
                             )}
                           </td>
                           <td className="py-2 px-2 align-top">
@@ -1521,9 +1631,26 @@ function ReportForm({
                               <div style={{ fontSize: '13px' }} className="text-gray-600">{item.repairNote || '-'}</div>
                             )}
                           </td>
+                          <td className="py-2 px-2 align-top text-center">
+                            {canApprove ? (
+                              <button
+                                type="button"
+                                onClick={() => handleApproveItem(item.id)}
+                                className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-xs font-medium transition"
+                              >
+                                ✅ Approve
+                              </button>
+                            ) : isApproved ? (
+                              <span className="text-xs text-green-600 font-semibold">✅ Approved</span>
+                            ) : item.status === 'Not Good' && !isApproved ? (
+                              <span className="text-xs text-gray-400">Menunggu Approve</span>
+                            ) : (
+                              <span className="text-xs text-gray-300">-</span>
+                            )}
+                          </td>
                           <td className="py-2 px-2 text-center align-top">
-                            <span className={`font-semibold ${hitung >= 0 ? 'text-green-600' : 'text-red-600'}`} style={{ fontSize: '13px' }}>
-                              {(hitung * 100).toFixed(2)}%
+                            <span className={`font-semibold ${hitungPersen >= 0 ? 'text-green-600' : 'text-red-600'}`} style={{ fontSize: '13px' }}>
+                              {hitungPersen.toFixed(1)}%
                             </span>
                           </td>
                         </tr>
@@ -1534,7 +1661,6 @@ function ReportForm({
               </div>
             </section>
 
-            {/* REKAP HASIL */}
             <section className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden mb-6">
               <div className="bg-blue-700 px-6 py-3">
                 <h2 className="text-lg font-semibold text-white">📊 Rekap Hasil Pemeriksaan</h2>
@@ -1547,11 +1673,15 @@ function ReportForm({
                   </div>
                   <div className="bg-green-50 p-4 rounded-lg text-center border border-green-200">
                     <div className="text-sm text-green-600">Good</div>
-                    <div className="text-2xl font-bold text-green-700">{formData.inspectionData.filter((i: any) => i.status === 'Good').length}</div>
+                    <div className="text-2xl font-bold text-green-700">
+                      {formData.inspectionData.filter((i: any) => i.status === 'Good' || (i.status === 'Not Good' && i.isApproved)).length}
+                    </div>
                   </div>
                   <div className="bg-red-50 p-4 rounded-lg text-center border border-red-200">
                     <div className="text-sm text-red-600">Not Good</div>
-                    <div className="text-2xl font-bold text-red-700">{formData.inspectionData.filter((i: any) => i.status === 'Not Good').length}</div>
+                    <div className="text-2xl font-bold text-red-700">
+                      {formData.inspectionData.filter((i: any) => i.status === 'Not Good' && !i.isApproved).length}
+                    </div>
                   </div>
                   <div className="bg-blue-50 p-4 rounded-lg text-center border border-blue-200">
                     <div className="text-sm text-blue-600">Nilai Akhir</div>
@@ -1563,13 +1693,13 @@ function ReportForm({
                           const originalItem = inspectionItems.find(i => i.id === item.id);
                           if (originalItem) {
                             totalWeight += originalItem.weight;
-                            if (item.status === 'Good') {
+                            if (item.status === 'Good' || (item.status === 'Not Good' && item.isApproved)) {
                               achievedWeight += originalItem.weight;
                             }
                           }
                         });
                         const percentage = totalWeight > 0 ? (achievedWeight / totalWeight) * 100 : 0;
-                        return percentage.toFixed(2) + '%';
+                        return percentage.toFixed(1) + '%';
                       })()}
                     </div>
                   </div>
@@ -1577,7 +1707,6 @@ function ReportForm({
               </div>
             </section>
 
-            {/* ATTACHMENT */}
             <section className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden mb-6">
               <div className="bg-blue-700 px-6 py-3">
                 <h2 className="text-lg font-semibold text-white">📎 Upload Attachment</h2>
@@ -1700,6 +1829,7 @@ function Dashboard({ role, onLogout }: {
         photoBefore: null,
         photoAfter: null,
         repairNote: '',
+        isApproved: false,
       })),
       attachment: null,
       attachmentName: null,
@@ -1740,6 +1870,7 @@ function Dashboard({ role, onLogout }: {
         photoBefore: null,
         photoAfter: null,
         repairNote: '',
+        isApproved: false,
       })),
     };
 
@@ -1781,7 +1912,7 @@ function Dashboard({ role, onLogout }: {
     } else if (isMaintenance) {
       setIsReadOnly(report.status !== 'qc_approved' && report.status !== 'revision');
     } else if (isQC) {
-      setIsReadOnly(report.status !== 'draft' && report.status !== 'maintenance_done');
+      setIsReadOnly(report.status !== 'draft' && report.status !== 'maintenance_done' && report.status !== 'revision');
     } else {
       setIsReadOnly(true);
     }
@@ -1840,10 +1971,8 @@ function Dashboard({ role, onLogout }: {
   const handleExportExcel = () => {
     if (!selectedReport) return;
     
-    // Export semua unit dengan data lengkap + total score
     const allData: any[] = [];
     
-    // Header dengan informasi laporan
     allData.push({
       'Unit': 'LAPORAN PEMELIHARAAN',
       'No Unit': '',
@@ -1866,11 +1995,9 @@ function Dashboard({ role, onLogout }: {
     });
     allData.push({});
     
-    // Data per unit
     selectedReport.units.forEach((unit: UnitData, idx: number) => {
       const unitScore = calculateUnitScoreForExport(unit);
       
-      // Header unit
       allData.push({
         'Unit': `=== UNIT ${idx + 1} ===`,
         'No Unit': unit.unitNumber || '-',
@@ -1882,22 +2009,22 @@ function Dashboard({ role, onLogout }: {
         'Score': ''
       });
       
-      // Data item
       unit.maintenanceData.forEach((item: any) => {
         const originalItem = maintenanceItems.find(i => i.id === item.id);
+        const isApproved = item.isApproved;
+        const statusDisplay = item.status === 'Not Good' && isApproved ? 'Approved' : item.status || '-';
         allData.push({
           'Unit': '',
           'No Unit': '',
           'No': item.id,
           'Item Pemeliharaan': originalItem?.item || '',
-          'Status': item.status || '-',
+          'Status': statusDisplay,
           'Temuan QC': item.finding || '-',
           'Catatan Perbaikan': item.repairNote || '-',
-          'Score': item.status === 'Good' ? 5 : item.status === 'Not Good' ? 0 : 0
+          'Score': (item.status === 'Good' || (item.status === 'Not Good' && isApproved)) ? 5 : item.status === 'Not Good' ? 0 : 0
         });
       });
       
-      // Score unit
       allData.push({
         'Unit': '',
         'No Unit': '',
@@ -1911,7 +2038,6 @@ function Dashboard({ role, onLogout }: {
       allData.push({});
     });
     
-    // Total score semua unit
     const totalStats = calculateTotalScoreForExport(selectedReport);
     allData.push({
       'Unit': '=== TOTAL SCORE ===',
@@ -1940,7 +2066,6 @@ function Dashboard({ role, onLogout }: {
     XLSX.writeFile(wb, `Data_Pemeliharaan_${selectedReport.id}.xlsx`);
   };
 
-  // Helper untuk export
   const calculateUnitScoreForExport = (unitData: UnitData) => {
     const totalItems = unitData.maintenanceData?.length || 0;
     let goodCount = 0;
@@ -1948,9 +2073,13 @@ function Dashboard({ role, onLogout }: {
     let naCount = 0;
 
     unitData.maintenanceData?.forEach((item: any) => {
-      if (item.status === 'Good') goodCount++;
-      else if (item.status === 'Not Good') notGoodCount++;
-      else if (item.status === 'N/A') naCount++;
+      if (item.status === 'Good' || (item.status === 'Not Good' && item.isApproved)) {
+        goodCount++;
+      } else if (item.status === 'Not Good' && !item.isApproved) {
+        notGoodCount++;
+      } else if (item.status === 'N/A') {
+        naCount++;
+      }
     });
 
     const totalScore = goodCount * 5;
