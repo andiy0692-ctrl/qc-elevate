@@ -2,6 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
+import { createClient } from '@supabase/supabase-js';
+
+// ============================================
+// SUPABASE CLIENT
+// ============================================
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // ============================================
 // DATA INSPEKSI (116 ITEM LENGKAP)
@@ -408,7 +416,6 @@ function ReportForm({
     };
   });
 
-  // CEK APAKAH SEMUA ITEM NOT GOOD SUDAH DIAPPROVE
   const isAllNotGoodApproved = () => {
     const notGoodItems = formData.inspectionData.filter((item: any) => item.status === 'Not Good');
     if (notGoodItems.length === 0) return true;
@@ -427,7 +434,6 @@ function ReportForm({
     return allApproved;
   };
 
-  // Handler Approve per item (Pemeriksaan) - HANYA UNTUK NOT GOOD
   const handleApproveItem = (id: number) => {
     if (!isQC || isReadOnly) return;
     if (formData.status !== 'maintenance_done' && formData.status !== 'revision') return;
@@ -444,7 +450,6 @@ function ReportForm({
     }));
   };
 
-  // Handler Approve per item (Pemeliharaan) - HANYA UNTUK NOT GOOD
   const handleApproveMaintenanceItem = (unitIndex: number, id: number) => {
     if (!isQC || isReadOnly) return;
     if (formData.status !== 'maintenance_done' && formData.status !== 'revision') return;
@@ -463,7 +468,6 @@ function ReportForm({
     });
   };
 
-  // Handler untuk mengubah jumlah unit
   const handleJumlahUnitChange = (value: number) => {
     if (!isQC || isReadOnly || formData.status !== 'draft') return;
     if (isPemeriksaan) return;
@@ -608,7 +612,6 @@ function ReportForm({
     });
   };
 
-  // Handler untuk inspection data (pemeriksaan)
   const handleStatusChange = (id: number, status: StatusType) => {
     if (!isQC || isReadOnly) return;
     if (formData.status !== 'draft') return;
@@ -706,9 +709,6 @@ function ReportForm({
     }
   };
 
-  // ============================================
-  // HITUNG SCORE
-  // ============================================
   const calculateUnitScore = (unitData: UnitData) => {
     const totalItems = unitData.maintenanceData?.length || 0;
     let goodCount = 0;
@@ -766,9 +766,6 @@ function ReportForm({
 
   const totalStats = calculateTotalScore();
 
-  // ============================================
-  // SUBMIT HANDLER
-  // ============================================
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(formData);
@@ -812,7 +809,6 @@ function ReportForm({
       alert(`✅ Data ${isPemeriksaan ? 'Pemeriksaan' : 'Pemeliharaan'} dikirim ke Maintenance!`);
     } else if (isQC && formData.status === 'maintenance_done') {
       if (action === 'approve') {
-        // Cek apakah semua Not Good sudah di-approve
         if (isPemeriksaan) {
           const notGoodItems = formData.inspectionData.filter((item: any) => item.status === 'Not Good');
           const unapprovedItems = notGoodItems.filter((item: any) => !item.isApproved);
@@ -893,9 +889,6 @@ function ReportForm({
     onSave(updatedData);
   };
 
-  // ============================================
-  // RENDER
-  // ============================================
   const canEdit = !isReadOnly;
   const isApproved = formData.status === 'approved' || formData.status === 'qc_approved';
 
@@ -1786,27 +1779,61 @@ function Dashboard({ role, onLogout }: {
   const isMaintenance = role === 'maintenance';
   const isSales = role === 'sales';
 
-  const loadData = () => {
-    const savedData = localStorage.getItem('elevateQC_reports');
-    let allReports: Report[] = [];
-    if (savedData) {
-      try {
-        allReports = JSON.parse(savedData);
-      } catch (e) {
-        console.error('Error loading reports:', e);
+  const loadData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('reports')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setReports(data || []);
+    } catch (e) {
+      console.error('Error loading reports:', e);
+      const savedData = localStorage.getItem('elevateQC_reports');
+      if (savedData) {
+        try {
+          setReports(JSON.parse(savedData));
+        } catch (err) {
+          console.error(err);
+        }
       }
     }
-    return allReports;
   };
 
   useEffect(() => {
-    const data = loadData();
-    setReports(data);
+    loadData();
   }, [refreshKey]);
 
-  const saveReports = (newReports: Report[]) => {
-    localStorage.setItem('elevateQC_reports', JSON.stringify(newReports));
-    setReports(newReports);
+  const saveReports = async (newReports: Report[]) => {
+    try {
+      for (const report of newReports) {
+        const { error } = await supabase
+          .from('reports')
+          .upsert({
+            id: report.id,
+            report_type: report.reportType,
+            jumlah_unit: report.jumlahUnit,
+            units: report.units,
+            teknisi_name: report.teknisiName,
+            inspection_data: report.inspectionData,
+            attachment: report.attachment,
+            attachment_name: report.attachmentName,
+            qc_verification: report.qcVerification,
+            submitted_by: report.submittedBy,
+            submitted_at: report.submittedAt,
+            status: report.status,
+            created_at: report.createdAt
+          }, { onConflict: 'id' });
+        
+        if (error) throw error;
+      }
+      setReports(newReports);
+    } catch (e) {
+      console.error('Error saving reports:', e);
+      localStorage.setItem('elevateQC_reports', JSON.stringify(newReports));
+      setReports(newReports);
+    }
   };
 
   const handleRefresh = () => {
@@ -1918,7 +1945,7 @@ function Dashboard({ role, onLogout }: {
     setCurrentMenu('viewReport');
   };
 
-  const handleSaveReport = (data: any) => {
+  const handleSaveReport = async (data: any) => {
     const existingIndex = reports.findIndex(r => r.id === data.id);
     let newReports: Report[];
     if (existingIndex >= 0) {
@@ -1927,7 +1954,7 @@ function Dashboard({ role, onLogout }: {
     } else {
       newReports = [...reports, data];
     }
-    saveReports(newReports);
+    await saveReports(newReports);
     setSelectedReport(data);
     setCurrentMenu('dashboard');
     
@@ -1944,16 +1971,28 @@ function Dashboard({ role, onLogout }: {
     }
   };
 
-  const handleDeleteReport = (id: string) => {
+  const handleDeleteReport = async (id: string) => {
     if (!isQC) {
       alert('⚠️ Hanya QC yang bisa menghapus laporan!');
       return;
     }
     if (confirm('Yakin ingin menghapus laporan ini?')) {
-      const newReports = reports.filter(r => r.id !== id);
-      saveReports(newReports);
-      setCurrentMenu('dashboard');
-      alert('🗑️ Laporan berhasil dihapus!');
+      try {
+        const { error } = await supabase
+          .from('reports')
+          .delete()
+          .eq('id', id);
+        
+        if (error) throw error;
+        
+        const newReports = reports.filter(r => r.id !== id);
+        setReports(newReports);
+        setCurrentMenu('dashboard');
+        alert('🗑️ Laporan berhasil dihapus!');
+      } catch (e) {
+        console.error('Error deleting report:', e);
+        alert('Gagal menghapus!');
+      }
     }
   };
 
