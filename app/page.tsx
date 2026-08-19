@@ -229,33 +229,83 @@ const calculateItemScore = (status: StatusType, weight: number, isApproved: bool
 };
 
 // ============================================
-// 🔥 FUNGSI DOWNLOAD DATA (EXPORT)
+// 🔥 FUNGSI EXPORT - DOWNLOAD JSON
 // ============================================
-async function exportData(data: any[]) {
+async function exportData() {
   try {
-    const jsonString = JSON.stringify(data, null, 2);
-    const blob = new Blob([jsonString], { type: 'application/json' });
+    const data = localStorage.getItem('elevateQC_reports');
+    if (!data) {
+      alert('⚠️ Tidak ada data untuk di-export!');
+      return;
+    }
+    
+    const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    const fileName = `elevateQC_data_${new Date().toISOString().slice(0,10)}.json`;
-    link.download = fileName;
-    document.body.appendChild(link);
+    link.download = `elevateQC_export_${new Date().toISOString().slice(0,10)}.json`;
     link.click();
-    document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    alert(`✅ Data berhasil di-export!\nFile: ${fileName}`);
-    return { success: true };
+    alert('✅ Export berhasil! File JSON sudah di-download.');
   } catch (error) {
-    alert('❌ Gagal export data!');
-    return { success: false };
+    alert('❌ Gagal export!');
   }
 }
 
 // ============================================
-// 🔥 FUNGSI UPLOAD DATA (IMPORT)
+// 🔥 FUNGSI IMPORT - MERGE DATA (TIDAK HILANG)
 // ============================================
-async function importData(): Promise<any[]> {
+async function importData() {
+  try {
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.onchange = (e: any) => {
+        const file = e.target.files[0];
+        if (!file) { resolve(null); return; }
+        const reader = new FileReader();
+        reader.onload = (event: any) => {
+          try {
+            const newData = JSON.parse(event.target.result);
+            if (!Array.isArray(newData)) {
+              alert('❌ File tidak valid!');
+              resolve(null);
+              return;
+            }
+            
+            // 🔥 MERGE DATA: Gabung data lama + baru
+            const oldData = JSON.parse(localStorage.getItem('elevateQC_reports') || '[]');
+            
+            // Buat Map untuk menghindari duplikat (berdasarkan ID)
+            const dataMap = new Map();
+            oldData.forEach((item: any) => dataMap.set(item.id, item));
+            newData.forEach((item: any) => dataMap.set(item.id, item));
+            
+            const mergedData = Array.from(dataMap.values());
+            
+            localStorage.setItem('elevateQC_reports', JSON.stringify(mergedData));
+            alert(`✅ Import berhasil! ${mergedData.length} laporan (${oldData.length} lama + ${newData.length} baru)`);
+            resolve(mergedData);
+          } catch (err) {
+            alert('❌ File rusak!');
+            resolve(null);
+          }
+        };
+        reader.readAsText(file);
+      };
+      input.click();
+    });
+  } catch (error) {
+    alert('❌ Gagal import!');
+    return null;
+  }
+}
+
+// ============================================
+// 🔥 FUNGSI RESTORE - GANTI TOTAL (HATI-HATI!)
+// ============================================
+async function restoreData() {
   try {
     return new Promise((resolve) => {
       const input = document.createElement('input');
@@ -274,7 +324,7 @@ async function importData(): Promise<any[]> {
               return;
             }
             localStorage.setItem('elevateQC_reports', JSON.stringify(data));
-            alert(`✅ ${data.length} laporan berhasil di-import!`);
+            alert(`✅ Restore berhasil! ${data.length} laporan dimuat.`);
             resolve(data);
           } catch (err) {
             alert('❌ File rusak!');
@@ -286,7 +336,7 @@ async function importData(): Promise<any[]> {
       input.click();
     });
   } catch (error) {
-    alert('❌ Gagal import data!');
+    alert('❌ Gagal restore!');
     return null;
   }
 }
@@ -415,7 +465,7 @@ function LoginPage({ onLogin }: { onLogin: (role: UserRole) => void }) {
 }
 
 // ============================================
-// 🔥 KOMPONEN DASHBOARD
+// KOMPONEN DASHBOARD
 // ============================================
 function Dashboard({ role, onLogout }: { 
   role: UserRole; 
@@ -461,21 +511,29 @@ function Dashboard({ role, onLogout }: {
     setReports(newReports);
   };
 
-  // 🔥 HANDLE EXPORT DATA
-  const handleExportData = async () => {
-    if (reports.length === 0) {
-      alert('⚠️ Tidak ada data untuk di-export!');
-      return;
-    }
-    await exportData(reports);
+  // ============================================
+  // 🔥 HANDLER UNTUK TOMBOL
+  // ============================================
+  
+  const handleExport = async () => {
+    await exportData();
   };
 
-  // 🔥 HANDLE IMPORT DATA
-  const handleImportData = async () => {
-    const data = await importData();
-    if (data && data.length > 0) {
-      setReports(data);
+  const handleImport = async () => {
+    const result = await importData();
+    if (result && result.length > 0) {
+      setReports(result);
       setRefreshKey(prev => prev + 1);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (confirm('⚠️ Data lama akan DIHAPUS dan diganti dengan data dari file. Lanjutkan?')) {
+      const result = await restoreData();
+      if (result && result.length > 0) {
+        setReports(result);
+        setRefreshKey(prev => prev + 1);
+      }
     }
   };
 
@@ -734,8 +792,9 @@ function Dashboard({ role, onLogout }: {
               {isQC && stats.revision > 0 && <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">🔄 {stats.revision} revisi</span>}
               {isMaintenance && (stats.qcApproved + stats.revision > 0) && <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 animate-pulse">🔧 {stats.qcApproved + stats.revision} perlu dikerjakan</span>}
               <button onClick={handleRefresh} className="text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded-md transition flex items-center gap-1">🔄 Refresh</button>
-              <button onClick={handleExportData} className="text-sm bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1 rounded-md transition flex items-center gap-1">📥 Export Data</button>
-              <button onClick={handleImportData} className="text-sm bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-3 py-1 rounded-md transition flex items-center gap-1">📤 Import Data</button>
+              <button onClick={handleExport} className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md transition flex items-center gap-1">📤 Export Data</button>
+              <button onClick={handleImport} className="text-sm bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md transition flex items-center gap-1">📥 Import Data (Merge)</button>
+              <button onClick={handleRestore} className="text-sm bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md transition flex items-center gap-1">📂 Restore (Ganti Total)</button>
               <button onClick={onLogout} className="text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 px-3 py-1 rounded-md transition">Logout</button>
             </div>
           </div>
@@ -920,7 +979,7 @@ function Dashboard({ role, onLogout }: {
 }
 
 // ============================================
-// KOMPONEN REPORT FORM - FULL LENGKAP
+// KOMPONEN REPORT FORM
 // ============================================
 function ReportForm({
   report,
