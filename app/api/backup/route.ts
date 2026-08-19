@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-// 🔥 GANTI DENGAN URL APPS SCRIPT BARU ANDA
+// 🔥 PAKAI URL APPS SCRIPT TERBARU
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwyGgVrhIuvcvQMcBmMJnUUOUeoUhvbbrVzTJMSG97Ei7iS_rjAjWJKLjZVIiXdF_jmHQ/exec';
 
 export async function POST(request: Request) {
