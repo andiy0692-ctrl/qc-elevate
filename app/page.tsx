@@ -123,9 +123,6 @@ const inspectionItems = [
   { id: 116, category: "SENSOR", item: "Input signal sensor gempa - Berhenti lantai terdekat", priority: "Prioritas_3", weight: 0.0005 },
 ];
 
-// ============================================
-// DATA PEMELIHARAAN (20 ITEM)
-// ============================================
 const maintenanceItems = [
   { id: 1, item: "Kondisi ruang mesin" },
   { id: 2, item: "Kondisi controller" },
@@ -220,9 +217,6 @@ interface Report {
   qcName?: string;
 }
 
-// ============================================
-// FUNGSI PERHITUNGAN - N/A = GOOD
-// ============================================
 const calculateItemScore = (status: StatusType, weight: number, isApproved: boolean = false): number => {
   if (status === 'Good' || status === 'N/A') {
     return weight;
@@ -235,7 +229,7 @@ const calculateItemScore = (status: StatusType, weight: number, isApproved: bool
 };
 
 // ============================================
-// FUNGSI BACKUP - GOOGLE APPS SCRIPT (PASTI BERHASIL)
+// 🔥 FUNGSI BACKUP - GOOGLE APPS SCRIPT
 // ============================================
 async function backupToGoogleDrive(data: any[]) {
   try {
@@ -267,7 +261,7 @@ async function backupToGoogleDrive(data: any[]) {
 }
 
 // ============================================
-// FUNGSI RESTORE - GOOGLE APPS SCRIPT (PASTI BERHASIL)
+// 🔥 FUNGSI RESTORE - GOOGLE APPS SCRIPT
 // ============================================
 async function restoreFromGoogleDrive() {
   try {
@@ -278,17 +272,15 @@ async function restoreFromGoogleDrive() {
     }
     
     const result = await response.json();
-    if (result.success && result.data) {
-      alert(`✅ Restore berhasil! ${result.data.length} laporan dimuat.`);
+    if (result.success && result.data && result.data.length > 0) {
       console.log(`✅ Restore berhasil: ${result.data.length} laporan`);
       return result.data;
     } else {
-      alert('⚠️ Tidak ada backup di Google Drive');
+      console.log('⚠️ Tidak ada backup di Google Drive');
       return null;
     }
   } catch (error) {
     console.error('❌ Gagal restore:', error);
-    alert(`❌ Restore gagal: ${error instanceof Error ? error.message : 'Unknown error'}`);
     return null;
   }
 }
@@ -417,7 +409,7 @@ function LoginPage({ onLogin }: { onLogin: (role: UserRole) => void }) {
 }
 
 // ============================================
-// KOMPONEN DASHBOARD
+// 🔥 KOMPONEN DASHBOARD - REVISI DENGAN FORCE RESTORE
 // ============================================
 function Dashboard({ role, onLogout }: { 
   role: UserRole; 
@@ -435,9 +427,21 @@ function Dashboard({ role, onLogout }: {
   const isMaintenance = role === 'maintenance';
   const isSales = role === 'sales';
 
+  // 🔥 FORCE LOAD DATA: PASTI AMBIL DARI GOOGLE DRIVE
   const loadData = async () => {
     setLoading(true);
     try {
+      // 🔥 PRIORITAS 1: Ambil dari Google Drive
+      const driveData = await restoreFromGoogleDrive();
+      if (driveData && driveData.length > 0) {
+        setReports(driveData);
+        localStorage.setItem('elevateQC_reports', JSON.stringify(driveData));
+        console.log('📦 Loaded from Google Drive:', driveData.length);
+        setLoading(false);
+        return;
+      }
+      
+      // 🔥 PRIORITAS 2: Kalau Drive kosong, ambil dari localStorage
       const savedData = localStorage.getItem('elevateQC_reports');
       if (savedData) {
         try {
@@ -449,15 +453,6 @@ function Dashboard({ role, onLogout }: {
             return;
           }
         } catch (err) {}
-      }
-      
-      const driveData = await restoreFromGoogleDrive();
-      if (driveData && driveData.length > 0) {
-        setReports(driveData);
-        localStorage.setItem('elevateQC_reports', JSON.stringify(driveData));
-        console.log('📦 Restore dari Google Drive:', driveData.length);
-        setLoading(false);
-        return;
       }
       
       setReports([]);
@@ -480,10 +475,36 @@ function Dashboard({ role, onLogout }: {
     }
   };
 
+  // 🔥 REFRESH: PAKSA AMBIL DARI GOOGLE DRIVE
   const handleRefresh = async () => {
-    await loadData();
+    setLoading(true);
+    try {
+      const driveData = await restoreFromGoogleDrive();
+      if (driveData && driveData.length > 0) {
+        setReports(driveData);
+        localStorage.setItem('elevateQC_reports', JSON.stringify(driveData));
+        alert(`✅ Data berhasil di-restore! ${driveData.length} laporan dimuat.`);
+        console.log('📦 Loaded from Google Drive:', driveData.length);
+      } else {
+        const savedData = localStorage.getItem('elevateQC_reports');
+        if (savedData) {
+          const parsed = JSON.parse(savedData);
+          if (parsed && parsed.length > 0) {
+            setReports(parsed);
+            alert(`📦 Data dimuat dari localStorage: ${parsed.length} laporan`);
+          } else {
+            alert('⚠️ Tidak ada data di Google Drive maupun localStorage');
+          }
+        } else {
+          alert('⚠️ Tidak ada data ditemukan');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Gagal refresh:', error);
+      alert('❌ Gagal memuat data!');
+    }
+    setLoading(false);
     setRefreshKey(prev => prev + 1);
-    alert('🔄 Data dimuat ulang!');
   };
 
   const handleManualBackup = async () => {
@@ -1031,7 +1052,6 @@ function ReportForm({
     };
   });
 
-  // PERHITUNGAN SKOR - N/A = GOOD
   const calculateTotalScore = (inspectionData: any[]) => {
     let totalWeight = 0;
     let achievedWeight = 0;
@@ -1059,9 +1079,6 @@ function ReportForm({
     return 0;
   };
 
-  // ============================================
-  // HANDLER FUNCTIONS
-  // ============================================
   const handleJumlahUnitChange = (value: number) => {
     if (!isQC || isReadOnly || formData.status !== 'draft') return;
     if (isPemeriksaan) return;
@@ -1506,9 +1523,6 @@ function ReportForm({
     return null;
   };
 
-  // ============================================
-  // RENDER FORM - FULL LENGKAP
-  // ============================================
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="no-print flex flex-wrap justify-between items-center gap-2">
@@ -1999,7 +2013,6 @@ function ReportForm({
           </>
         )}
 
-        {/* PEMELIHARAAN SECTION */}
         {isPemeliharaan && (
           <>
             {formData.units && formData.units.map((unit: UnitData, unitIndex: number) => {
