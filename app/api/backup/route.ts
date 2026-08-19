@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzyDFxCHIBJE2_F5AsbDoqNn7XrzN9QceZCEfO6t3vhJkaLo-qlT7NtvX_vzie_MJPT0g/exec';
+// 🔥 GANTI DENGAN URL YANG BENAR (PAKAI YANG DI DEVICE 1 BERHASIL)
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxvs83cuXXZ5le-SvVRd36hg2v37QTz1UGPWplSL0yvmR1s9eey-AVvYj_K-sH3jiQEPQ/exec';
 
 export async function POST(request: Request) {
   try {
