@@ -229,58 +229,70 @@ const calculateItemScore = (status: StatusType, weight: number, isApproved: bool
 };
 
 // ============================================
-// 🔥 FUNGSI BACKUP - GOOGLE APPS SCRIPT
+// 🔥 FUNGSI BACKUP - DOWNLOAD JSON (PASTI BERHASIL)
 // ============================================
 async function backupToGoogleDrive(data: any[]) {
   try {
-    const response = await fetch('/api/backup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data }),
-    });
+    localStorage.setItem('elevateQC_reports', JSON.stringify(data));
     
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
+    const jsonString = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const fileName = `elevateQC_backup_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
     
-    const result = await response.json();
-    if (result.success) {
-      alert(`✅ Backup berhasil!\nFile: ${result.fileName}`);
-      console.log('✅ Backup ke Google Drive berhasil!');
-      console.log(`📄 File ID: ${result.fileId}`);
-      console.log(`📄 Nama: ${result.fileName}`);
-    } else {
-      alert(`❌ Backup gagal: ${result.error}`);
-    }
-    return result;
+    alert(`✅ Backup berhasil! File: ${fileName}`);
+    return { success: true, fileName: fileName };
   } catch (error) {
-    console.error('❌ Gagal backup:', error);
-    alert(`❌ Backup gagal: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    alert('❌ Backup gagal!');
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
 
 // ============================================
-// 🔥 FUNGSI RESTORE - GOOGLE APPS SCRIPT
+// 🔥 FUNGSI RESTORE - UPLOAD JSON (PASTI BERHASIL)
 // ============================================
 async function restoreFromGoogleDrive() {
   try {
-    const response = await fetch('/api/backup');
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    
-    const result = await response.json();
-    if (result.success && result.data && result.data.length > 0) {
-      console.log(`✅ Restore berhasil: ${result.data.length} laporan`);
-      return result.data;
-    } else {
-      console.log('⚠️ Tidak ada backup di Google Drive');
-      return null;
-    }
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.onchange = (e: any) => {
+        const file = e.target.files[0];
+        if (!file) {
+          resolve(null);
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = (event: any) => {
+          try {
+            const data = JSON.parse(event.target.result);
+            if (!Array.isArray(data)) {
+              alert('❌ File tidak valid!');
+              resolve(null);
+              return;
+            }
+            localStorage.setItem('elevateQC_reports', JSON.stringify(data));
+            alert(`✅ Restore berhasil! ${data.length} laporan dimuat.`);
+            resolve(data);
+          } catch (err) {
+            alert('❌ File tidak valid!');
+            resolve(null);
+          }
+        };
+        reader.readAsText(file);
+      };
+      input.click();
+    });
   } catch (error) {
-    console.error('❌ Gagal restore:', error);
+    alert('❌ Restore gagal!');
     return null;
   }
 }
@@ -409,7 +421,7 @@ function LoginPage({ onLogin }: { onLogin: (role: UserRole) => void }) {
 }
 
 // ============================================
-// 🔥 KOMPONEN DASHBOARD - REVISI DENGAN FORCE RESTORE
+// 🔥 KOMPONEN DASHBOARD - REVISI FINAL
 // ============================================
 function Dashboard({ role, onLogout }: { 
   role: UserRole; 
@@ -427,21 +439,10 @@ function Dashboard({ role, onLogout }: {
   const isMaintenance = role === 'maintenance';
   const isSales = role === 'sales';
 
-  // 🔥 FORCE LOAD DATA: PASTI AMBIL DARI GOOGLE DRIVE
   const loadData = async () => {
     setLoading(true);
     try {
-      // 🔥 PRIORITAS 1: Ambil dari Google Drive
-      const driveData = await restoreFromGoogleDrive();
-      if (driveData && driveData.length > 0) {
-        setReports(driveData);
-        localStorage.setItem('elevateQC_reports', JSON.stringify(driveData));
-        console.log('📦 Loaded from Google Drive:', driveData.length);
-        setLoading(false);
-        return;
-      }
-      
-      // 🔥 PRIORITAS 2: Kalau Drive kosong, ambil dari localStorage
+      // Cek localStorage dulu
       const savedData = localStorage.getItem('elevateQC_reports');
       if (savedData) {
         try {
@@ -453,6 +454,16 @@ function Dashboard({ role, onLogout }: {
             return;
           }
         } catch (err) {}
+      }
+      
+      // Kalau kosong, coba restore dari file
+      const driveData = await restoreFromGoogleDrive();
+      if (driveData && driveData.length > 0) {
+        setReports(driveData);
+        localStorage.setItem('elevateQC_reports', JSON.stringify(driveData));
+        console.log('📦 Restore dari file:', driveData.length);
+        setLoading(false);
+        return;
       }
       
       setReports([]);
@@ -475,35 +486,15 @@ function Dashboard({ role, onLogout }: {
     }
   };
 
-  // 🔥 REFRESH: PAKSA AMBIL DARI GOOGLE DRIVE
   const handleRefresh = async () => {
-    setLoading(true);
-    try {
-      const driveData = await restoreFromGoogleDrive();
-      if (driveData && driveData.length > 0) {
-        setReports(driveData);
-        localStorage.setItem('elevateQC_reports', JSON.stringify(driveData));
-        alert(`✅ Data berhasil di-restore! ${driveData.length} laporan dimuat.`);
-        console.log('📦 Loaded from Google Drive:', driveData.length);
-      } else {
-        const savedData = localStorage.getItem('elevateQC_reports');
-        if (savedData) {
-          const parsed = JSON.parse(savedData);
-          if (parsed && parsed.length > 0) {
-            setReports(parsed);
-            alert(`📦 Data dimuat dari localStorage: ${parsed.length} laporan`);
-          } else {
-            alert('⚠️ Tidak ada data di Google Drive maupun localStorage');
-          }
-        } else {
-          alert('⚠️ Tidak ada data ditemukan');
-        }
-      }
-    } catch (error) {
-      console.error('❌ Gagal refresh:', error);
-      alert('❌ Gagal memuat data!');
+    const result = await restoreFromGoogleDrive();
+    if (result && result.length > 0) {
+      setReports(result);
+      localStorage.setItem('elevateQC_reports', JSON.stringify(result));
+      alert(`✅ Data berhasil di-restore! ${result.length} laporan dimuat.`);
+    } else {
+      alert('📂 Silakan pilih file JSON untuk di-restore');
     }
-    setLoading(false);
     setRefreshKey(prev => prev + 1);
   };
 
@@ -769,7 +760,7 @@ function Dashboard({ role, onLogout }: {
               {isQC && stats.maintenanceDone > 0 && <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 animate-pulse">📬 {stats.maintenanceDone} menunggu verifikasi</span>}
               {isQC && stats.revision > 0 && <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">🔄 {stats.revision} revisi</span>}
               {isMaintenance && (stats.qcApproved + stats.revision > 0) && <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 animate-pulse">🔧 {stats.qcApproved + stats.revision} perlu dikerjakan</span>}
-              <button onClick={handleRefresh} className="text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded-md transition flex items-center gap-1">🔄 Refresh</button>
+              <button onClick={handleRefresh} className="text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded-md transition flex items-center gap-1">🔄 Upload & Restore</button>
               <button onClick={handleManualBackup} className="text-sm bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1 rounded-md transition flex items-center gap-1">💾 Backup Drive</button>
               <button onClick={onLogout} className="text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 px-3 py-1 rounded-md transition">Logout</button>
             </div>
