@@ -229,36 +229,33 @@ const calculateItemScore = (status: StatusType, weight: number, isApproved: bool
 };
 
 // ============================================
-// 🔥 FUNGSI BACKUP - DOWNLOAD JSON (PASTI BERHASIL)
+// 🔥 FUNGSI DOWNLOAD DATA (EXPORT)
 // ============================================
-async function backupToGoogleDrive(data: any[]) {
+async function exportData(data: any[]) {
   try {
-    localStorage.setItem('elevateQC_reports', JSON.stringify(data));
-    
     const jsonString = JSON.stringify(data, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    const fileName = `elevateQC_backup_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    const fileName = `elevateQC_data_${new Date().toISOString().slice(0,10)}.json`;
     link.download = fileName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    
-    alert(`✅ Backup berhasil! File: ${fileName}`);
-    return { success: true, fileName: fileName };
+    alert(`✅ Data berhasil di-export!\nFile: ${fileName}`);
+    return { success: true };
   } catch (error) {
-    alert('❌ Backup gagal!');
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    alert('❌ Gagal export data!');
+    return { success: false };
   }
 }
 
 // ============================================
-// 🔥 FUNGSI RESTORE - UPLOAD JSON (PASTI BERHASIL)
+// 🔥 FUNGSI UPLOAD DATA (IMPORT)
 // ============================================
-async function restoreFromGoogleDrive() {
+async function importData(): Promise<any[]> {
   try {
     return new Promise((resolve) => {
       const input = document.createElement('input');
@@ -266,10 +263,7 @@ async function restoreFromGoogleDrive() {
       input.accept = '.json';
       input.onchange = (e: any) => {
         const file = e.target.files[0];
-        if (!file) {
-          resolve(null);
-          return;
-        }
+        if (!file) { resolve(null); return; }
         const reader = new FileReader();
         reader.onload = (event: any) => {
           try {
@@ -280,10 +274,10 @@ async function restoreFromGoogleDrive() {
               return;
             }
             localStorage.setItem('elevateQC_reports', JSON.stringify(data));
-            alert(`✅ Restore berhasil! ${data.length} laporan dimuat.`);
+            alert(`✅ ${data.length} laporan berhasil di-import!`);
             resolve(data);
           } catch (err) {
-            alert('❌ File tidak valid!');
+            alert('❌ File rusak!');
             resolve(null);
           }
         };
@@ -292,7 +286,7 @@ async function restoreFromGoogleDrive() {
       input.click();
     });
   } catch (error) {
-    alert('❌ Restore gagal!');
+    alert('❌ Gagal import data!');
     return null;
   }
 }
@@ -421,7 +415,7 @@ function LoginPage({ onLogin }: { onLogin: (role: UserRole) => void }) {
 }
 
 // ============================================
-// 🔥 KOMPONEN DASHBOARD - REVISI FINAL
+// 🔥 KOMPONEN DASHBOARD
 // ============================================
 function Dashboard({ role, onLogout }: { 
   role: UserRole; 
@@ -442,7 +436,6 @@ function Dashboard({ role, onLogout }: {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Cek localStorage dulu
       const savedData = localStorage.getItem('elevateQC_reports');
       if (savedData) {
         try {
@@ -455,17 +448,6 @@ function Dashboard({ role, onLogout }: {
           }
         } catch (err) {}
       }
-      
-      // Kalau kosong, coba restore dari file
-      const driveData = await restoreFromGoogleDrive();
-      if (driveData && driveData.length > 0) {
-        setReports(driveData);
-        localStorage.setItem('elevateQC_reports', JSON.stringify(driveData));
-        console.log('📦 Restore dari file:', driveData.length);
-        setLoading(false);
-        return;
-      }
-      
       setReports([]);
     } catch (e) {
       console.error('Error loading reports:', e);
@@ -477,38 +459,30 @@ function Dashboard({ role, onLogout }: {
   const saveReports = async (newReports: Report[]) => {
     localStorage.setItem('elevateQC_reports', JSON.stringify(newReports));
     setReports(newReports);
-    
-    try {
-      await backupToGoogleDrive(newReports);
-      console.log('💾 Backup success');
-    } catch (e) {
-      console.warn('⚠️ Backup error:', e);
+  };
+
+  // 🔥 HANDLE EXPORT DATA
+  const handleExportData = async () => {
+    if (reports.length === 0) {
+      alert('⚠️ Tidak ada data untuk di-export!');
+      return;
+    }
+    await exportData(reports);
+  };
+
+  // 🔥 HANDLE IMPORT DATA
+  const handleImportData = async () => {
+    const data = await importData();
+    if (data && data.length > 0) {
+      setReports(data);
+      setRefreshKey(prev => prev + 1);
     }
   };
 
   const handleRefresh = async () => {
-    const result = await restoreFromGoogleDrive();
-    if (result && result.length > 0) {
-      setReports(result);
-      localStorage.setItem('elevateQC_reports', JSON.stringify(result));
-      alert(`✅ Data berhasil di-restore! ${result.length} laporan dimuat.`);
-    } else {
-      alert('📂 Silakan pilih file JSON untuk di-restore');
-    }
+    await loadData();
     setRefreshKey(prev => prev + 1);
-  };
-
-  const handleManualBackup = async () => {
-    if (reports.length === 0) {
-      alert('⚠️ Tidak ada data untuk di-backup!');
-      return;
-    }
-    const result = await backupToGoogleDrive(reports);
-    if (result?.success) {
-      alert(`✅ Backup berhasil!\nFile: ${result.fileName}`);
-    } else {
-      alert(`❌ Backup gagal: ${result?.error || 'Unknown error'}`);
-    }
+    alert('🔄 Data dimuat ulang!');
   };
 
   const handleNewPemeriksaan = () => {
@@ -650,7 +624,6 @@ function Dashboard({ role, onLogout }: {
       const newReports = reports.filter(r => r.id !== id);
       localStorage.setItem('elevateQC_reports', JSON.stringify(newReports));
       setReports(newReports);
-      await backupToGoogleDrive(newReports);
       setCurrentMenu('dashboard');
       alert('🗑️ Laporan berhasil dihapus!');
     }
@@ -760,8 +733,9 @@ function Dashboard({ role, onLogout }: {
               {isQC && stats.maintenanceDone > 0 && <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 animate-pulse">📬 {stats.maintenanceDone} menunggu verifikasi</span>}
               {isQC && stats.revision > 0 && <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">🔄 {stats.revision} revisi</span>}
               {isMaintenance && (stats.qcApproved + stats.revision > 0) && <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 animate-pulse">🔧 {stats.qcApproved + stats.revision} perlu dikerjakan</span>}
-              <button onClick={handleRefresh} className="text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded-md transition flex items-center gap-1">🔄 Upload & Restore</button>
-              <button onClick={handleManualBackup} className="text-sm bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1 rounded-md transition flex items-center gap-1">💾 Backup Drive</button>
+              <button onClick={handleRefresh} className="text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded-md transition flex items-center gap-1">🔄 Refresh</button>
+              <button onClick={handleExportData} className="text-sm bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1 rounded-md transition flex items-center gap-1">📥 Export Data</button>
+              <button onClick={handleImportData} className="text-sm bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-3 py-1 rounded-md transition flex items-center gap-1">📤 Import Data</button>
               <button onClick={onLogout} className="text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 px-3 py-1 rounded-md transition">Logout</button>
             </div>
           </div>
