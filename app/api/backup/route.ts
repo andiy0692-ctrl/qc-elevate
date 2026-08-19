@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
-// 🔥 GANTI DENGAN URL YANG BENAR (PAKAI YANG DI DEVICE 1 BERHASIL)
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxvs83cuXXZ5le-SvVRd36hg2v37QTz1UGPWplSL0yvmR1s9eey-AVvYj_K-sH3jiQEPQ/exec';
+// 🔥 GANTI DENGAN URL APPS SCRIPT BARU ANDA
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwyGgVrhIuvcvQMcBmMJnUUOUeoUhvbbrVzTJMSG97Ei7iS_rjAjWJKLjZVIiXdF_jmHQ/exec';
 
 export async function POST(request: Request) {
   try {
@@ -18,6 +18,7 @@ export async function POST(request: Request) {
       fileName: result.fileName,
     });
   } catch (error: any) {
+    console.error('❌ POST Error:', error);
     return NextResponse.json({
       success: false,
       error: error.message || 'Unknown error'
@@ -34,6 +35,7 @@ export async function GET() {
       data: result.data || null
     });
   } catch (error: any) {
+    console.error('❌ GET Error:', error);
     return NextResponse.json({
       success: false,
       error: error.message || 'Unknown error'
