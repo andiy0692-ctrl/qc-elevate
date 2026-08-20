@@ -342,6 +342,40 @@ async function restoreData() {
 }
 
 // ============================================
+// KOMPONEN LOADING SPINNER
+// ============================================
+function LoadingSpinner({ message = 'Memuat...' }: { message?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center p-8">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700"></div>
+      <p className="mt-4 text-gray-600 text-sm">{message}</p>
+    </div>
+  );
+}
+
+// ============================================
+// KOMPONEN TOAST NOTIFICATION
+// ============================================
+function Toast({ message, type, onClose }: { message: string; type: 'success' | 'error' | 'info'; onClose: () => void }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  const colors = {
+    success: 'bg-green-500',
+    error: 'bg-red-500',
+    info: 'bg-blue-500'
+  };
+
+  return (
+    <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg text-white ${colors[type]} transform transition-all duration-300 animate-slide-in`}>
+      {message}
+    </div>
+  );
+}
+
+// ============================================
 // KOMPONEN LOGIN
 // ============================================
 function LoginPage({ onLogin }: { onLogin: (role: UserRole) => void }) {
@@ -361,6 +395,9 @@ function LoginPage({ onLogin }: { onLogin: (role: UserRole) => void }) {
       setLoading(false);
       return;
     }
+
+    // Simulasi loading
+    await new Promise(resolve => setTimeout(resolve, 800));
 
     const users = {
       'qc': { password: 'qc123', role: 'qc' },
@@ -387,9 +424,9 @@ function LoginPage({ onLogin }: { onLogin: (role: UserRole) => void }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-8">
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-8 transform transition-all duration-500 animate-fade-in">
         <div className="text-center mb-8">
-          <div className="inline-block bg-blue-700 rounded-full p-4 mb-4">
+          <div className="inline-block bg-blue-700 rounded-full p-4 mb-4 shadow-lg">
             <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
@@ -405,18 +442,18 @@ function LoginPage({ onLogin }: { onLogin: (role: UserRole) => void }) {
                 key={role}
                 type="button"
                 onClick={() => setSelectedRole(role)}
-                className={`p-2 rounded-lg border-2 text-center transition text-sm ${
+                className={`p-2 rounded-lg border-2 text-center transition-all duration-200 text-sm ${
                   selectedRole === role
-                    ? role === 'maintenance' ? 'border-blue-600 bg-blue-50 text-blue-700' :
-                      role === 'qc' ? 'border-green-600 bg-green-50 text-green-700' :
-                      'border-orange-600 bg-orange-50 text-orange-700'
-                    : 'border-gray-200 hover:border-blue-300'
+                    ? role === 'maintenance' ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-md transform scale-105' :
+                      role === 'qc' ? 'border-green-600 bg-green-50 text-green-700 shadow-md transform scale-105' :
+                      'border-orange-600 bg-orange-50 text-orange-700 shadow-md transform scale-105'
+                    : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
                 }`}
               >
-                <div className="text-xl">
+                <div className="text-2xl">
                   {role === 'maintenance' ? '🔧' : role === 'qc' ? '✅' : '💰'}
                 </div>
-                <div className="text-[10px] font-semibold">
+                <div className="text-[10px] font-semibold mt-1">
                   {role === 'maintenance' ? 'Maintenance' : role === 'qc' ? 'QC' : 'Sales'}
                 </div>
               </button>
@@ -428,7 +465,7 @@ function LoginPage({ onLogin }: { onLogin: (role: UserRole) => void }) {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="Username"
-            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
           />
 
           <input
@@ -436,10 +473,10 @@ function LoginPage({ onLogin }: { onLogin: (role: UserRole) => void }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
-            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
           />
 
-          {error && <div className="text-red-500 text-sm">{error}</div>}
+          {error && <div className="text-red-500 text-sm text-center bg-red-50 p-2 rounded-lg animate-shake">{error}</div>}
 
           <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-500 text-center border border-gray-200">
             <p className="font-semibold text-blue-700">PT Louserindo Megah Permai</p>
@@ -450,16 +487,35 @@ function LoginPage({ onLogin }: { onLogin: (role: UserRole) => void }) {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full font-bold py-3 rounded-lg transition ${
+            className={`w-full font-bold py-3 rounded-lg transition-all duration-300 ${
               loading 
                 ? 'bg-gray-400 text-white cursor-not-allowed' 
-                : 'bg-blue-700 hover:bg-blue-800 text-white'
+                : 'bg-blue-700 hover:bg-blue-800 text-white shadow-lg hover:shadow-xl transform hover:scale-[1.02]'
             }`}
           >
-            {loading ? '⏳ Memuat...' : 'Masuk'}
+            {loading ? <LoadingSpinner message="Memproses..." /> : '🚪 Masuk'}
           </button>
         </form>
       </div>
+
+      <style>{`
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(-20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slide-in {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-5px); }
+          75% { transform: translateX(5px); }
+        }
+        .animate-fade-in { animation: fade-in 0.5s ease-out; }
+        .animate-slide-in { animation: slide-in 0.3s ease-out; }
+        .animate-shake { animation: shake 0.3s ease-in-out; }
+      `}</style>
     </div>
   );
 }
@@ -478,10 +534,16 @@ function Dashboard({ role, onLogout }: {
   const [refreshKey, setRefreshKey] = useState(0);
   const [sortOrder, setSortOrder] = useState<SortOrder>('terbaru');
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   const isQC = role === 'qc';
   const isMaintenance = role === 'maintenance';
   const isSales = role === 'sales';
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -492,7 +554,6 @@ function Dashboard({ role, onLogout }: {
           const parsed = JSON.parse(savedData);
           if (parsed && parsed.length > 0) {
             setReports(parsed);
-            console.log('📦 Loaded from localStorage:', parsed.length);
             setLoading(false);
             return;
           }
@@ -517,22 +578,31 @@ function Dashboard({ role, onLogout }: {
   
   const handleExport = async () => {
     await exportData();
+    showToast('✅ Data berhasil di-export!', 'success');
   };
 
   const handleImport = async () => {
+    showToast('📥 Memilih file untuk import...', 'info');
     const result = await importData();
     if (result && result.length > 0) {
       setReports(result);
       setRefreshKey(prev => prev + 1);
+      showToast(`✅ Import berhasil! ${result.length} laporan dimuat.`, 'success');
+    } else {
+      showToast('❌ Gagal import data.', 'error');
     }
   };
 
   const handleRestore = async () => {
     if (confirm('⚠️ Data lama akan DIHAPUS dan diganti dengan data dari file. Lanjutkan?')) {
+      showToast('📥 Memilih file untuk restore...', 'info');
       const result = await restoreData();
       if (result && result.length > 0) {
         setReports(result);
         setRefreshKey(prev => prev + 1);
+        showToast(`✅ Restore berhasil! ${result.length} laporan dimuat.`, 'success');
+      } else {
+        showToast('❌ Gagal restore data.', 'error');
       }
     }
   };
@@ -540,7 +610,7 @@ function Dashboard({ role, onLogout }: {
   const handleRefresh = async () => {
     await loadData();
     setRefreshKey(prev => prev + 1);
-    alert('🔄 Data dimuat ulang!');
+    showToast('🔄 Data dimuat ulang!', 'success');
   };
 
   const handleNewPemeriksaan = () => {
@@ -671,11 +741,12 @@ function Dashboard({ role, onLogout }: {
     await saveReports(newReports);
     setSelectedReport(data);
     setCurrentMenu('dashboard');
+    showToast('✅ Data berhasil disimpan!', 'success');
   };
 
   const handleDeleteReport = async (id: string) => {
     if (!isQC) {
-      alert('⚠️ Hanya QC yang bisa menghapus laporan!');
+      showToast('⚠️ Hanya QC yang bisa menghapus laporan!', 'error');
       return;
     }
     if (confirm('Yakin ingin menghapus laporan ini?')) {
@@ -683,7 +754,7 @@ function Dashboard({ role, onLogout }: {
       localStorage.setItem('elevateQC_reports', JSON.stringify(newReports));
       setReports(newReports);
       setCurrentMenu('dashboard');
-      alert('🗑️ Laporan berhasil dihapus!');
+      showToast('🗑️ Laporan berhasil dihapus!', 'success');
     }
   };
 
@@ -699,7 +770,7 @@ function Dashboard({ role, onLogout }: {
 
   const handleExportExcel = () => {
     if (!selectedReport) return;
-    alert('📊 Export Excel (fitur dalam pengembangan)');
+    showToast('📊 Export Excel (fitur dalam pengembangan)', 'info');
   };
 
   const getFilteredReports = () => {
@@ -769,6 +840,14 @@ function Dashboard({ role, onLogout }: {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
+      )}
+      
       <div className="container mx-auto px-4 py-6 max-w-7xl">
         <header className="no-print bg-white shadow-sm rounded-lg p-6 mb-8 border border-gray-200">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between">
@@ -791,21 +870,68 @@ function Dashboard({ role, onLogout }: {
               {isQC && stats.maintenanceDone > 0 && <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 animate-pulse">📬 {stats.maintenanceDone} menunggu verifikasi</span>}
               {isQC && stats.revision > 0 && <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">🔄 {stats.revision} revisi</span>}
               {isMaintenance && (stats.qcApproved + stats.revision > 0) && <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 animate-pulse">🔧 {stats.qcApproved + stats.revision} perlu dikerjakan</span>}
-              <button onClick={handleRefresh} className="text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded-md transition flex items-center gap-1">🔄 Refresh</button>
-              <button onClick={handleExport} className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md transition flex items-center gap-1">📤 Export Data</button>
-              <button onClick={handleImport} className="text-sm bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md transition flex items-center gap-1">📥 Import Data (Merge)</button>
-              <button onClick={handleRestore} className="text-sm bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md transition flex items-center gap-1">📂 Restore (Ganti Total)</button>
-              <button onClick={onLogout} className="text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 px-3 py-1 rounded-md transition">Logout</button>
+              
+              {/* TOMBOL UPLOAD & IMPORT - DITAMBAHKAN DENGAN VISUAL YANG JELAS */}
+              <div className="flex flex-wrap gap-2">
+                <button 
+                  onClick={handleRefresh} 
+                  className="text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 hover:shadow-md"
+                >
+                  🔄 Refresh
+                </button>
+                <button 
+                  onClick={handleExport} 
+                  className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 hover:shadow-md hover:scale-105"
+                >
+                  📤 Export
+                </button>
+                <button 
+                  onClick={handleImport} 
+                  className="text-sm bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 hover:shadow-md hover:scale-105"
+                >
+                  📥 Import
+                </button>
+                <button 
+                  onClick={handleRestore} 
+                  className="text-sm bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 hover:shadow-md hover:scale-105"
+                >
+                  📂 Restore
+                </button>
+                <button 
+                  onClick={onLogout} 
+                  className="text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2"
+                >
+                  🚪 Logout
+                </button>
+              </div>
             </div>
           </div>
 
           <div className="mt-3 grid grid-cols-4 md:grid-cols-6 gap-2 text-xs">
-            <div className="bg-gray-50 p-2 rounded text-center"><div className="font-bold text-gray-700">{stats.total}</div><div className="text-gray-400">Total</div></div>
-            <div className="bg-gray-50 p-2 rounded text-center"><div className="font-bold text-gray-500">{stats.draft}</div><div className="text-gray-400">Draft QC</div></div>
-            <div className="bg-blue-50 p-2 rounded text-center"><div className="font-bold text-blue-600">{stats.qcApproved}</div><div className="text-blue-400">Maintenance</div></div>
-            <div className="bg-yellow-50 p-2 rounded text-center"><div className="font-bold text-yellow-600">{stats.revision}</div><div className="text-yellow-400">Revisi</div></div>
-            <div className="bg-orange-50 p-2 rounded text-center"><div className="font-bold text-orange-600">{stats.maintenanceDone}</div><div className="text-orange-400">Verifikasi</div></div>
-            <div className="bg-green-50 p-2 rounded text-center"><div className="font-bold text-green-600">{stats.approved}</div><div className="text-green-400">Final</div></div>
+            <div className="bg-gray-50 p-2 rounded text-center hover:shadow-md transition">
+              <div className="font-bold text-gray-700">{stats.total}</div>
+              <div className="text-gray-400">Total</div>
+            </div>
+            <div className="bg-gray-50 p-2 rounded text-center hover:shadow-md transition">
+              <div className="font-bold text-gray-500">{stats.draft}</div>
+              <div className="text-gray-400">Draft</div>
+            </div>
+            <div className="bg-blue-50 p-2 rounded text-center hover:shadow-md transition">
+              <div className="font-bold text-blue-600">{stats.qcApproved}</div>
+              <div className="text-blue-400">Maintenance</div>
+            </div>
+            <div className="bg-yellow-50 p-2 rounded text-center hover:shadow-md transition">
+              <div className="font-bold text-yellow-600">{stats.revision}</div>
+              <div className="text-yellow-400">Revisi</div>
+            </div>
+            <div className="bg-orange-50 p-2 rounded text-center hover:shadow-md transition">
+              <div className="font-bold text-orange-600">{stats.maintenanceDone}</div>
+              <div className="text-orange-400">Verifikasi</div>
+            </div>
+            <div className="bg-green-50 p-2 rounded text-center hover:shadow-md transition">
+              <div className="font-bold text-green-600">{stats.approved}</div>
+              <div className="text-green-400">Final</div>
+            </div>
           </div>
 
           {isQC && (
@@ -822,10 +948,16 @@ function Dashboard({ role, onLogout }: {
               <div className="flex flex-wrap gap-3">
                 {isQC && (
                   <>
-                    <button onClick={handleNewPemeriksaan} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 shadow-md">
+                    <button 
+                      onClick={handleNewPemeriksaan} 
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105"
+                    >
                       <span className="text-xl">📋</span> New Pemeriksaan
                     </button>
-                    <button onClick={handleNewPemeliharaan} className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 shadow-md">
+                    <button 
+                      onClick={handleNewPemeliharaan} 
+                      className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105"
+                    >
                       <span className="text-xl">🔧</span> New Pemeliharaan
                     </button>
                   </>
@@ -836,8 +968,26 @@ function Dashboard({ role, onLogout }: {
 
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-500">Urutkan:</span>
-                <button onClick={() => setSortOrder('terbaru')} className={`px-3 py-1 rounded-md text-sm transition ${sortOrder === 'terbaru' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>📅 Terbaru</button>
-                <button onClick={() => setSortOrder('terlama')} className={`px-3 py-1 rounded-md text-sm transition ${sortOrder === 'terlama' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>📅 Terlama</button>
+                <button 
+                  onClick={() => setSortOrder('terbaru')} 
+                  className={`px-3 py-1 rounded-md text-sm transition-all duration-200 ${
+                    sortOrder === 'terbaru' 
+                      ? 'bg-blue-600 text-white shadow-md' 
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  📅 Terbaru
+                </button>
+                <button 
+                  onClick={() => setSortOrder('terlama')} 
+                  className={`px-3 py-1 rounded-md text-sm transition-all duration-200 ${
+                    sortOrder === 'terlama' 
+                      ? 'bg-blue-600 text-white shadow-md' 
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  📅 Terlama
+                </button>
               </div>
             </div>
 
@@ -852,7 +1002,7 @@ function Dashboard({ role, onLogout }: {
               </div>
 
               {loading ? (
-                <div className="p-8 text-center text-gray-500">⏳ Memuat data...</div>
+                <LoadingSpinner message="Memuat data laporan..." />
               ) : (() => {
                 if (filteredReports.length === 0) {
                   return (
@@ -885,26 +1035,54 @@ function Dashboard({ role, onLogout }: {
                           const customerDisplay = report.reportType === 'pemeliharaan' && report.jumlahUnit > 1 ? `${report.jumlahUnit} Pelanggan` : firstUnit?.customerName || report.customerName || '-';
 
                           return (
-                            <tr key={report.id} className="border-t border-gray-100 hover:bg-gray-50">
+                            <tr key={report.id} className="border-t border-gray-100 hover:bg-gray-50 transition-colors duration-150">
                               <td className="px-4 py-2 text-gray-500 whitespace-nowrap" style={{ fontSize: '13px' }}>{formatDate(report.createdAt)}</td>
                               <td className="px-4 py-2 font-medium" style={{ fontSize: '13px' }}>{unitDisplay}</td>
                               <td className="px-4 py-2" style={{ fontSize: '13px' }}>{projectDisplay}</td>
                               <td className="px-4 py-2" style={{ fontSize: '13px' }}>{customerDisplay}</td>
                               <td className="px-4 py-2">
-                                <span className={`px-2 py-1 rounded-full ${report.reportType === 'pemeriksaan' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`} style={{ fontSize: '12px' }}>
+                                <span className={`px-2 py-1 rounded-full ${
+                                  report.reportType === 'pemeriksaan' 
+                                    ? 'bg-blue-100 text-blue-700' 
+                                    : 'bg-green-100 text-green-700'
+                                }`} style={{ fontSize: '12px' }}>
                                   {report.reportType === 'pemeriksaan' ? '📋 Pemeriksaan' : '🔧 Pemeliharaan'}
                                 </span>
                               </td>
                               {isQC && <td className="px-4 py-2" style={{ fontSize: '13px' }}>{report.teknisiName || 'Belum ditunjuk'}</td>}
                               <td className="px-4 py-2">
-                                <span className={`inline-flex px-2 py-1 rounded-full font-semibold ${report.status === 'draft' ? 'bg-gray-200 text-gray-700' : report.status === 'qc_approved' ? 'bg-blue-100 text-blue-700' : report.status === 'revision' ? 'bg-yellow-100 text-yellow-700' : report.status === 'maintenance_done' ? 'bg-orange-100 text-orange-700' : report.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-700'}`} style={{ fontSize: '12px' }}>
-                                  {report.status === 'draft' ? '📝 Draft QC' : report.status === 'qc_approved' ? '📤 Menunggu Maintenance' : report.status === 'revision' ? '🔄 Revisi' : report.status === 'maintenance_done' ? '🔧 Verifikasi QC' : report.status === 'approved' ? '✅ Final Approved' : '📝 Draft'}
+                                <span className={`inline-flex px-2 py-1 rounded-full font-semibold ${
+                                  report.status === 'draft' ? 'bg-gray-200 text-gray-700' : 
+                                  report.status === 'qc_approved' ? 'bg-blue-100 text-blue-700' : 
+                                  report.status === 'revision' ? 'bg-yellow-100 text-yellow-700' : 
+                                  report.status === 'maintenance_done' ? 'bg-orange-100 text-orange-700' : 
+                                  report.status === 'approved' ? 'bg-green-100 text-green-700' : 
+                                  'bg-gray-200 text-gray-700'
+                                }`} style={{ fontSize: '12px' }}>
+                                  {report.status === 'draft' ? '📝 Draft QC' : 
+                                   report.status === 'qc_approved' ? '📤 Menunggu Maintenance' : 
+                                   report.status === 'revision' ? '🔄 Revisi' : 
+                                   report.status === 'maintenance_done' ? '🔧 Verifikasi QC' : 
+                                   report.status === 'approved' ? '✅ Final Approved' : 
+                                   '📝 Draft'}
                                 </span>
                               </td>
                               <td className="px-4 py-2">
-                                <button onClick={() => handleViewReport(report)} className="text-blue-600 hover:text-blue-800 font-medium" style={{ fontSize: '13px' }}>👁️ Lihat</button>
+                                <button 
+                                  onClick={() => handleViewReport(report)} 
+                                  className="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200 hover:underline"
+                                  style={{ fontSize: '13px' }}
+                                >
+                                  👁️ Lihat
+                                </button>
                                 {isQC && report.status !== 'approved' && (
-                                  <button onClick={() => handleDeleteReport(report.id)} className="text-red-500 hover:text-red-700 font-medium ml-2" style={{ fontSize: '13px' }}>🗑️</button>
+                                  <button 
+                                    onClick={() => handleDeleteReport(report.id)} 
+                                    className="text-red-500 hover:text-red-700 font-medium ml-2 transition-colors duration-200"
+                                    style={{ fontSize: '13px' }}
+                                  >
+                                    🗑️
+                                  </button>
                                 )}
                               </td>
                             </tr>
@@ -918,7 +1096,7 @@ function Dashboard({ role, onLogout }: {
             </div>
           </div>
         ) : (
-          <div className="bg-white shadow-sm rounded-lg border border-gray-200 p-6">
+          <div className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 animate-fade-in">
             {selectedReport && (
               <ReportForm
                 report={selectedReport}
@@ -973,6 +1151,11 @@ function Dashboard({ role, onLogout }: {
           .print\\:hidden { display: none !important; }
           img { max-width: 80px !important; max-height: 80px !important; }
         }
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fade-in 0.3s ease-out; }
       `}</style>
     </div>
   );
@@ -1006,6 +1189,7 @@ function ReportForm({
   const isMaintenance = userRole === 'maintenance';
   const isPemeriksaan = reportType === 'pemeriksaan';
   const isPemeliharaan = reportType === 'pemeliharaan';
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [selectedJumlahUnit, setSelectedJumlahUnit] = useState<number>(report?.jumlahUnit || 1);
   const [formData, setFormData] = useState<any>(() => {
@@ -1363,6 +1547,8 @@ function ReportForm({
   };
 
   const handleKirim = (action: 'submit' | 'approve' | 'revision') => {
+    setIsSubmitting(true);
+    
     let updatedData: any;
 
     if (isQC && formData.status === 'draft') {
@@ -1370,6 +1556,7 @@ function ReportForm({
         const emptyItems = formData.inspectionData.filter((item: any) => !item.status);
         if (emptyItems.length > 0) {
           alert(`⚠️ Terdapat ${emptyItems.length} item yang belum diisi status.`);
+          setIsSubmitting(false);
           return;
         }
         const invalidItems = formData.inspectionData.filter(
@@ -1377,6 +1564,7 @@ function ReportForm({
         );
         if (invalidItems.length > 0) {
           alert(`⚠️ Terdapat ${invalidItems.length} item Not Good tanpa temuan.`);
+          setIsSubmitting(false);
           return;
         }
       } else if (isPemeliharaan) {
@@ -1388,7 +1576,10 @@ function ReportForm({
             hasError = true;
           }
         });
-        if (hasError) return;
+        if (hasError) {
+          setIsSubmitting(false);
+          return;
+        }
       }
 
       updatedData = {
@@ -1398,8 +1589,11 @@ function ReportForm({
         status: 'qc_approved',
       };
       
-      onSave(updatedData);
-      alert(`✅ Data ${isPemeriksaan ? 'Pemeriksaan' : 'Pemeliharaan'} dikirim ke Maintenance!`);
+      setTimeout(() => {
+        onSave(updatedData);
+        setIsSubmitting(false);
+        alert(`✅ Data ${isPemeriksaan ? 'Pemeriksaan' : 'Pemeliharaan'} dikirim ke Maintenance!`);
+      }, 500);
       return;
     } else if (isQC && formData.status === 'maintenance_done') {
       if (action === 'approve') {
@@ -1408,6 +1602,7 @@ function ReportForm({
           const unapprovedItems = notGoodItems.filter((item: any) => !item.isApproved);
           if (unapprovedItems.length > 0) {
             alert(`⚠️ Masih ada ${unapprovedItems.length} item Not Good yang belum di-approve!`);
+            setIsSubmitting(false);
             return;
           }
         } else if (isPemeliharaan) {
@@ -1418,6 +1613,7 @@ function ReportForm({
           });
           if (unapprovedCount > 0) {
             alert(`⚠️ Masih ada ${unapprovedCount} item Not Good yang belum di-approve!`);
+            setIsSubmitting(false);
             return;
           }
         }
@@ -1430,7 +1626,11 @@ function ReportForm({
           },
           status: 'approved',
         };
-        alert('✅ Laporan FINAL APPROVED!');
+        setTimeout(() => {
+          onSave(updatedData);
+          setIsSubmitting(false);
+          alert('✅ Laporan FINAL APPROVED!');
+        }, 500);
       } else if (action === 'revision') {
         updatedData = {
           ...formData,
@@ -1441,11 +1641,16 @@ function ReportForm({
           },
           status: 'revision',
         };
-        alert(`📝 REVISION! Dikirim ke Maintenance untuk perbaikan.`);
+        setTimeout(() => {
+          onSave(updatedData);
+          setIsSubmitting(false);
+          alert(`📝 REVISION! Dikirim ke Maintenance untuk perbaikan.`);
+        }, 500);
       }
     } else if (isMaintenance && (formData.status === 'qc_approved' || formData.status === 'revision')) {
       if (!formData.teknisiName || formData.teknisiName.trim() === '') {
         alert('Silakan isi nama teknisi yang bertugas terlebih dahulu!');
+        setIsSubmitting(false);
         return;
       }
 
@@ -1454,6 +1659,7 @@ function ReportForm({
         const invalidItems = notGoodItems.filter((item: any) => !item.photoAfter || !item.repairNote);
         if (invalidItems.length > 0) {
           alert(`Terdapat ${invalidItems.length} item Not Good tanpa foto setelah perbaikan atau catatan.`);
+          setIsSubmitting(false);
           return;
         }
       } else if (isPemeliharaan) {
@@ -1466,7 +1672,10 @@ function ReportForm({
             hasError = true;
           }
         });
-        if (hasError) return;
+        if (hasError) {
+          setIsSubmitting(false);
+          return;
+        }
       }
       
       updatedData = {
@@ -1475,12 +1684,16 @@ function ReportForm({
         submittedAt: new Date().toLocaleString('id-ID'),
         status: 'maintenance_done',
       };
-      alert(`✅ Perbaikan selesai oleh ${formData.teknisiName}! Dikirim ke QC untuk verifikasi.`);
+      setTimeout(() => {
+        onSave(updatedData);
+        setIsSubmitting(false);
+        alert(`✅ Perbaikan selesai oleh ${formData.teknisiName}! Dikirim ke QC untuk verifikasi.`);
+      }, 500);
     } else {
       alert('⚠️ Status tidak sesuai untuk tindakan ini.');
+      setIsSubmitting(false);
       return;
     }
-    onSave(updatedData);
   };
 
   const canEdit = !isReadOnly;
@@ -1497,7 +1710,7 @@ function ReportForm({
   const renderTeknisiInput = () => {
     if (isMaintenance && !isReadOnly && (formData.status === 'qc_approved' || formData.status === 'revision')) {
       return (
-        <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mb-6">
+        <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mb-6 animate-pulse">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Nama Teknisi Pelaksana <span className="text-red-500">*</span>
           </label>
@@ -1507,10 +1720,10 @@ function ReportForm({
               value={formData.teknisiName || ''}
               onChange={(e) => handleTeknisiNameChange(e.target.value)}
               placeholder="Masukkan nama teknisi yang bertugas"
-              className="flex-1 px-3 py-2 border border-blue-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              className="flex-1 px-3 py-2 border border-blue-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white transition"
             />
             {formData.teknisiName && (
-              <span className="text-xs text-green-600 font-medium">
+              <span className="text-xs text-green-600 font-medium animate-fade-in">
                 ✅ Nama tersimpan: {formData.teknisiName}
               </span>
             )}
@@ -1536,7 +1749,7 @@ function ReportForm({
 
     if (isMaintenance && (formData.status === 'qc_approved' || formData.status === 'revision') && !formData.teknisiName) {
       return (
-        <div className="bg-red-50 p-4 rounded-lg border border-red-200 mb-6">
+        <div className="bg-red-50 p-4 rounded-lg border border-red-200 mb-6 animate-shake">
           <p className="text-sm text-red-600 font-medium">
             ⚠️ Nama teknisi belum diisi! Silakan isi nama teknisi pelaksana di atas.
           </p>
@@ -1550,17 +1763,49 @@ function ReportForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="no-print flex flex-wrap justify-between items-center gap-2">
-        <button type="button" onClick={onCancel} className="text-gray-500 hover:text-gray-700 flex items-center gap-2">← Kembali</button>
+        <button 
+          type="button" 
+          onClick={onCancel} 
+          className="text-gray-500 hover:text-gray-700 flex items-center gap-2 transition-colors duration-200"
+        >
+          ← Kembali
+        </button>
         <div className="flex flex-wrap gap-2">
-          {canEdit && <button type="button" onClick={() => onDelete?.(formData.id)} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg">🗑️ Hapus</button>}
+          {canEdit && (
+            <button 
+              type="button" 
+              onClick={() => onDelete?.(formData.id)} 
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-all duration-200 hover:shadow-md hover:scale-105"
+            >
+              🗑️ Hapus
+            </button>
+          )}
           
           {isQC && formData.status === 'draft' && (
-            <button type="button" onClick={() => handleKirim('submit')} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">📤 Submit ke Maintenance</button>
+            <button 
+              type="button" 
+              onClick={() => handleKirim('submit')} 
+              disabled={isSubmitting}
+              className={`bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-all duration-200 hover:shadow-md hover:scale-105 ${
+                isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+            >
+              {isSubmitting ? <LoadingSpinner message="Mengirim..." /> : '📤 Submit ke Maintenance'}
+            </button>
           )}
 
           {isQC && formData.status === 'maintenance_done' && (
             <>
-              <button type="button" onClick={() => handleKirim('revision')} className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-2 rounded-lg">🔄 Revisi</button>
+              <button 
+                type="button" 
+                onClick={() => handleKirim('revision')} 
+                disabled={isSubmitting}
+                className={`bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-2 rounded-lg transition-all duration-200 hover:shadow-md hover:scale-105 ${
+                  isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                {isSubmitting ? <LoadingSpinner message="Memproses..." /> : '🔄 Revisi'}
+              </button>
               <button 
                 type="button" 
                 onClick={() => {
@@ -1570,10 +1815,14 @@ function ReportForm({
                   }
                   handleKirim('approve');
                 }} 
-                className={`px-6 py-2 rounded-lg ${canFinalApprove ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-gray-400 text-gray-600 cursor-not-allowed'}`}
-                disabled={!canFinalApprove}
+                disabled={!canFinalApprove || isSubmitting}
+                className={`px-6 py-2 rounded-lg transition-all duration-200 hover:shadow-md hover:scale-105 ${
+                  canFinalApprove && !isSubmitting
+                    ? 'bg-green-600 hover:bg-green-700 text-white' 
+                    : 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                }`}
               >
-                ✅ Approve (Final)
+                {isSubmitting ? <LoadingSpinner message="Memproses..." /> : '✅ Approve (Final)'}
               </button>
             </>
           )}
@@ -1614,24 +1863,36 @@ function ReportForm({
                 onSave(updatedData);
                 alert(`✅ Perbaikan selesai oleh ${formData.teknisiName}! Dikirim ke QC untuk verifikasi.`);
               }}
-              className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-lg"
+              className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-lg transition-all duration-200 hover:shadow-md hover:scale-105"
             >
               🔧 Kirim ke QC
             </button>
           )}
 
           {isQC && isApproved && onPrintPDF && (
-            <button type="button" onClick={onPrintPDF} className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg flex items-center gap-2">📄 Download PDF</button>
+            <button 
+              type="button" 
+              onClick={onPrintPDF} 
+              className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition-all duration-200 hover:shadow-md hover:scale-105"
+            >
+              📄 Download PDF
+            </button>
           )}
 
           {isPemeliharaan && onExportExcel && (
-            <button type="button" onClick={onExportExcel} className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg flex items-center gap-2">📊 Export Excel</button>
+            <button 
+              type="button" 
+              onClick={onExportExcel} 
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition-all duration-200 hover:shadow-md hover:scale-105"
+            >
+              📊 Export Excel
+            </button>
           )}
 
           {isReadOnly && <span className="text-sm text-gray-400 self-center">🔒 Mode Read-Only</span>}
           
           {isQC && formData.status === 'maintenance_done' && (
-            <span className="text-sm text-orange-500 self-center">
+            <span className={`text-sm self-center ${allNotGoodApproved ? 'text-green-500' : 'text-orange-500'} animate-pulse`}>
               {allNotGoodApproved ? '✅ Semua Not Good sudah di-approve!' : '⚠️ Approve setiap item Not Good yang sudah diperbaiki'}
             </span>
           )}
@@ -1649,7 +1910,7 @@ function ReportForm({
 
         {isPemeliharaan && isQC && !isReadOnly && formData.status === 'draft' && (
           <section className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden mb-6">
-            <div className="bg-blue-700 px-6 py-3">
+            <div className="bg-green-700 px-6 py-3">
               <h2 className="text-lg font-semibold text-white">📊 Jumlah Unit Proyek</h2>
             </div>
             <div className="p-6">
@@ -1664,10 +1925,10 @@ function ReportForm({
                     max="100"
                     value={selectedJumlahUnit}
                     onChange={(e) => handleJumlahUnitChange(Number(e.target.value))}
-                    className="w-full px-4 py-3 text-lg border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
+                    className="w-full px-4 py-3 text-lg border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-center transition"
                   />
                   <p className="text-xs text-gray-400 mt-2 text-center">Maksimal 100 unit.</p>
-                  <p className="text-sm text-blue-600 mt-2 text-center font-semibold">
+                  <p className="text-sm text-green-600 mt-2 text-center font-semibold">
                     {selectedJumlahUnit} Unit {selectedJumlahUnit > 1 ? 'terpilih' : 'terpilih'}
                   </p>
                 </div>
@@ -1677,10 +1938,10 @@ function ReportForm({
         )}
 
         {isPemeliharaan && (isReadOnly || !isQC || formData.status !== 'draft') && formData.jumlahUnit && (
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-6">
+          <div className="bg-green-50 p-4 rounded-lg border border-green-200 mb-6">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-blue-700">📊 Jumlah Unit Proyek:</span>
-              <span className="text-2xl font-bold text-blue-800">{formData.jumlahUnit} Unit</span>
+              <span className="text-sm font-medium text-green-700">📊 Jumlah Unit Proyek:</span>
+              <span className="text-2xl font-bold text-green-800">{formData.jumlahUnit} Unit</span>
             </div>
           </div>
         )}
@@ -1697,7 +1958,7 @@ function ReportForm({
                       type="text"
                       value={formData.unitNumber || ''}
                       onChange={(e) => setFormData((prev: any) => ({ ...prev, unitNumber: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                       disabled={isReadOnly}
                       placeholder="Masukkan No Unit"
                     />
@@ -1708,7 +1969,7 @@ function ReportForm({
                       type="text"
                       value={formData.projectCode || ''}
                       onChange={(e) => setFormData((prev: any) => ({ ...prev, projectCode: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                       disabled={isReadOnly}
                       placeholder="Masukkan Kode Proyek"
                     />
@@ -1719,7 +1980,7 @@ function ReportForm({
                       type="text"
                       value={formData.customerName || ''}
                       onChange={(e) => setFormData((prev: any) => ({ ...prev, customerName: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                       disabled={isReadOnly}
                       placeholder="Masukkan Nama Pelanggan"
                     />
@@ -1730,7 +1991,7 @@ function ReportForm({
                       type="text"
                       value={formData.buildingLocation || ''}
                       onChange={(e) => setFormData((prev: any) => ({ ...prev, buildingLocation: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                       disabled={isReadOnly}
                       placeholder="Masukkan Lokasi Gedung"
                     />
@@ -1741,7 +2002,7 @@ function ReportForm({
                       type="text"
                       value={formData.elevatorType || ''}
                       onChange={(e) => setFormData((prev: any) => ({ ...prev, elevatorType: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                       disabled={isReadOnly}
                       placeholder="Masukkan Tipe / Merk"
                     />
@@ -1752,7 +2013,7 @@ function ReportForm({
                       type="text"
                       value={formData.capacity || ''}
                       onChange={(e) => setFormData((prev: any) => ({ ...prev, capacity: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                       disabled={isReadOnly}
                       placeholder="Masukkan Kapasitas"
                     />
@@ -1763,7 +2024,7 @@ function ReportForm({
                       type="text"
                       value={formData.speed || ''}
                       onChange={(e) => setFormData((prev: any) => ({ ...prev, speed: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                       disabled={isReadOnly}
                       placeholder="Masukkan Kecepatan"
                     />
@@ -1774,7 +2035,7 @@ function ReportForm({
                       type="date"
                       value={formData.inspectionDate || ''}
                       onChange={(e) => setFormData((prev: any) => ({ ...prev, inspectionDate: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                       disabled={isReadOnly}
                     />
                   </div>
@@ -1784,7 +2045,7 @@ function ReportForm({
                       type="text"
                       value={formData.qcName || ''}
                       onChange={(e) => setFormData((prev: any) => ({ ...prev, qcName: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                       disabled={isReadOnly}
                       placeholder="Masukkan Nama QC"
                     />
@@ -1853,7 +2114,7 @@ function ReportForm({
                       const hitungPersen = hitung * 100;
 
                       return (
-                        <tr key={item.id} className="border-b border-gray-100 print:break-inside-avoid">
+                        <tr key={item.id} className="border-b border-gray-100 print:break-inside-avoid hover:bg-gray-50 transition-colors duration-150">
                           <td className="py-2 px-2 text-gray-600 align-top" style={{ fontSize: '13px' }}>{item.id}</td>
                           <td className="py-2 px-2 text-gray-600 align-top uppercase font-medium" style={{ fontSize: '12px' }}>{originalItem?.category || '-'}</td>
                           <td className="py-2 px-2 text-gray-800 align-top" style={{ fontSize: '13px' }}>{originalItem?.item || '-'}</td>
@@ -1889,7 +2150,7 @@ function ReportForm({
                           </td>
                           <td className="py-2 px-2 align-top">
                             {isEditable ? (
-                              <textarea value={item.finding} onChange={(e) => handleFindingChange(item.id, e.target.value)} disabled={item.status === 'Good' || item.status === 'N/A'} placeholder={isNotGood ? 'Wajib diisi' : 'Temuan'} className={`w-full px-2 py-1 border rounded-md ${isNotGood && !item.finding ? 'border-red-300 bg-red-50' : 'border-gray-300'} ${item.status === 'Good' ? 'bg-gray-100' : 'bg-white'}`} rows={2} style={{ fontSize: '13px' }}/>
+                              <textarea value={item.finding} onChange={(e) => handleFindingChange(item.id, e.target.value)} disabled={item.status === 'Good' || item.status === 'N/A'} placeholder={isNotGood ? 'Wajib diisi' : 'Temuan'} className={`w-full px-2 py-1 border rounded-md ${isNotGood && !item.finding ? 'border-red-300 bg-red-50' : 'border-gray-300'} ${item.status === 'Good' ? 'bg-gray-100' : 'bg-white'} transition`} rows={2} style={{ fontSize: '13px' }}/>
                             ) : (
                               <div style={{ fontSize: '13px' }} className="text-gray-600">{item.finding || '-'}</div>
                             )}
@@ -1897,7 +2158,7 @@ function ReportForm({
                           <td className="py-2 px-2 align-top">
                             {isEditable && isNotGood ? (
                               <div>
-                                <input type="file" accept="image/*" onChange={(e) => handlePhotoBeforeChange(item.id, e)} style={{ fontSize: '12px' }}/>
+                                <input type="file" accept="image/*" onChange={(e) => handlePhotoBeforeChange(item.id, e)} style={{ fontSize: '12px' }} className="transition"/>
                                 {item.photoBefore && <div className="relative inline-block mt-1"><img src={item.photoBefore} alt="Before" className="w-20 h-20 object-cover rounded border"/></div>}
                               </div>
                             ) : (
@@ -1907,7 +2168,7 @@ function ReportForm({
                           <td className="py-2 px-2 align-top">
                             {isMaintEditable ? (
                               <div>
-                                <input type="file" accept="image/*" onChange={(e) => handlePhotoAfterChange(item.id, e)} style={{ fontSize: '12px' }}/>
+                                <input type="file" accept="image/*" onChange={(e) => handlePhotoAfterChange(item.id, e)} style={{ fontSize: '12px' }} className="transition"/>
                                 {item.photoAfter && <div className="relative inline-block mt-1"><img src={item.photoAfter} alt="After" className="w-20 h-20 object-cover rounded border"/></div>}
                                 {isNotGood && !item.photoAfter && <p style={{ fontSize: '12px' }} className="text-red-500">Wajib upload</p>}
                               </div>
@@ -1917,7 +2178,7 @@ function ReportForm({
                           </td>
                           <td className="py-2 px-2 align-top">
                             {isMaintEditable ? (
-                              <textarea value={item.repairNote || ''} onChange={(e) => handleRepairNoteChange(item.id, e.target.value)} placeholder="Catatan perbaikan..." className={`w-full px-2 py-1 border rounded-md ${isNotGood && !item.repairNote ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} rows={2} style={{ fontSize: '13px' }}/>
+                              <textarea value={item.repairNote || ''} onChange={(e) => handleRepairNoteChange(item.id, e.target.value)} placeholder="Catatan perbaikan..." className={`w-full px-2 py-1 border rounded-md ${isNotGood && !item.repairNote ? 'border-red-300 bg-red-50' : 'border-gray-300'} transition`} rows={2} style={{ fontSize: '13px' }}/>
                             ) : (
                               <div style={{ fontSize: '13px' }} className="text-gray-600">{item.repairNote || '-'}</div>
                             )}
@@ -1927,7 +2188,7 @@ function ReportForm({
                               <button
                                 type="button"
                                 onClick={() => handleApproveItem(item.id)}
-                                className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-xs font-medium transition"
+                                className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 hover:shadow-md hover:scale-105"
                               >
                                 ✅ Approve
                               </button>
@@ -1958,23 +2219,23 @@ function ReportForm({
               </div>
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="bg-gray-50 p-4 rounded-lg text-center border border-gray-200">
+                  <div className="bg-gray-50 p-4 rounded-lg text-center border border-gray-200 hover:shadow-md transition">
                     <div className="text-sm text-gray-500">Total Item</div>
                     <div className="text-2xl font-bold text-gray-700">{formData.inspectionData.length}</div>
                   </div>
-                  <div className="bg-green-50 p-4 rounded-lg text-center border border-green-200">
+                  <div className="bg-green-50 p-4 rounded-lg text-center border border-green-200 hover:shadow-md transition">
                     <div className="text-sm text-green-600">Good + N/A</div>
                     <div className="text-2xl font-bold text-green-700">
                       {formData.inspectionData.filter((i: any) => i.status === 'Good' || i.status === 'N/A' || (i.status === 'Not Good' && i.isApproved)).length}
                     </div>
                   </div>
-                  <div className="bg-red-50 p-4 rounded-lg text-center border border-red-200">
+                  <div className="bg-red-50 p-4 rounded-lg text-center border border-red-200 hover:shadow-md transition">
                     <div className="text-sm text-red-600">Not Good</div>
                     <div className="text-2xl font-bold text-red-700">
                       {formData.inspectionData.filter((i: any) => i.status === 'Not Good' && !i.isApproved).length}
                     </div>
                   </div>
-                  <div className="bg-blue-50 p-4 rounded-lg text-center border border-blue-200">
+                  <div className="bg-blue-50 p-4 rounded-lg text-center border border-blue-200 hover:shadow-md transition">
                     <div className="text-sm text-blue-600">Nilai Akhir</div>
                     <div className="text-2xl font-bold text-blue-700">
                       {totalScore.toFixed(1)}%
@@ -1989,25 +2250,25 @@ function ReportForm({
                 <h2 className="text-lg font-semibold text-white">📎 Upload Attachment</h2>
               </div>
               <div className="p-6">
-                <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 transition">
+                <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 transition-all duration-200">
                   {isQC && !isReadOnly ? (
                     <input
                       type="file"
                       accept=".pdf,.doc,.docx,.xlsx,.xls,.jpg,.jpeg,.png"
                       onChange={handleAttachmentChange}
                       disabled={isReadOnly}
-                      className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
+                      className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50 transition"
                     />
                   ) : (
                     <div className="w-full text-center">
                       <p className="text-sm text-gray-600 mb-2">📎 File Attachment</p>
                       {formData.attachment ? (
-                        <div className="flex items-center justify-center gap-4">
+                        <div className="flex items-center justify-center gap-4 flex-wrap">
                           <span className="text-sm text-gray-700">📄 {formData.attachmentName || 'File'}</span>
                           <button
                             type="button"
                             onClick={handleDownloadAttachment}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm"
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-all duration-200 hover:shadow-md hover:scale-105"
                           >
                             ⬇️ Download
                           </button>
@@ -2016,7 +2277,7 @@ function ReportForm({
                               href={formData.attachment}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm"
+                              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition-all duration-200 hover:shadow-md hover:scale-105"
                             >
                               👁️ Lihat
                             </a>
@@ -2028,7 +2289,7 @@ function ReportForm({
                     </div>
                   )}
                   {formData.attachment && isQC && !isReadOnly && (
-                    <div className="mt-2 text-sm text-green-600">✅ File terupload: {formData.attachmentName}</div>
+                    <div className="mt-2 text-sm text-green-600 animate-fade-in">✅ File terupload: {formData.attachmentName}</div>
                   )}
                   <p className="text-xs text-gray-400 mt-2">Upload file pendukung (PDF, DOC, XLSX, Gambar, dll)</p>
                 </div>
@@ -2055,15 +2316,15 @@ function ReportForm({
                   <div className="p-6 border-b border-gray-200">
                     <h3 className="text-sm font-semibold text-gray-600 mb-3">Data Umum</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div><label className="block text-sm font-medium text-gray-700 mb-1">No Unit</label><input type="text" value={unit.unitNumber || ''} onChange={(e) => updateUnitData(unitIndex, 'unitNumber', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" disabled={isReadOnly || !isQC || formData.status !== 'draft'} placeholder="Masukkan No Unit" /></div>
-                      <div><label className="block text-sm font-medium text-gray-700 mb-1">Kode Proyek</label><input type="text" value={unit.projectCode || ''} onChange={(e) => updateUnitData(unitIndex, 'projectCode', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" disabled={isReadOnly || !isQC || formData.status !== 'draft'} placeholder="Masukkan Kode Proyek" /></div>
-                      <div><label className="block text-sm font-medium text-gray-700 mb-1">Nama Pelanggan</label><input type="text" value={unit.customerName || ''} onChange={(e) => updateUnitData(unitIndex, 'customerName', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" disabled={isReadOnly || !isQC || formData.status !== 'draft'} placeholder="Masukkan Nama Pelanggan" /></div>
-                      <div><label className="block text-sm font-medium text-gray-700 mb-1">Lokasi Gedung</label><input type="text" value={unit.buildingLocation || ''} onChange={(e) => updateUnitData(unitIndex, 'buildingLocation', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" disabled={isReadOnly || !isQC || formData.status !== 'draft'} placeholder="Masukkan Lokasi Gedung" /></div>
-                      <div><label className="block text-sm font-medium text-gray-700 mb-1">Tipe / Merk</label><input type="text" value={unit.elevatorType || ''} onChange={(e) => updateUnitData(unitIndex, 'elevatorType', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" disabled={isReadOnly || !isQC || formData.status !== 'draft'} placeholder="Masukkan Tipe / Merk" /></div>
-                      <div><label className="block text-sm font-medium text-gray-700 mb-1">Kapasitas (kg)</label><input type="text" value={unit.capacity || ''} onChange={(e) => updateUnitData(unitIndex, 'capacity', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" disabled={isReadOnly || !isQC || formData.status !== 'draft'} placeholder="Masukkan Kapasitas" /></div>
-                      <div><label className="block text-sm font-medium text-gray-700 mb-1">Kecepatan (m/menit)</label><input type="text" value={unit.speed || ''} onChange={(e) => updateUnitData(unitIndex, 'speed', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" disabled={isReadOnly || !isQC || formData.status !== 'draft'} placeholder="Masukkan Kecepatan" /></div>
-                      <div><label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Pemeriksaan</label><input type="date" value={unit.inspectionDate || ''} onChange={(e) => updateUnitData(unitIndex, 'inspectionDate', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" disabled={isReadOnly || !isQC || formData.status !== 'draft'} /></div>
-                      <div><label className="block text-sm font-medium text-gray-700 mb-1">Nama QC</label><input type="text" value={unit.qcName || ''} onChange={(e) => updateUnitData(unitIndex, 'qcName', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" disabled={isReadOnly || !isQC || formData.status !== 'draft'} placeholder="Masukkan Nama QC" /></div>
+                      <div><label className="block text-sm font-medium text-gray-700 mb-1">No Unit</label><input type="text" value={unit.unitNumber || ''} onChange={(e) => updateUnitData(unitIndex, 'unitNumber', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 transition" disabled={isReadOnly || !isQC || formData.status !== 'draft'} placeholder="Masukkan No Unit" /></div>
+                      <div><label className="block text-sm font-medium text-gray-700 mb-1">Kode Proyek</label><input type="text" value={unit.projectCode || ''} onChange={(e) => updateUnitData(unitIndex, 'projectCode', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 transition" disabled={isReadOnly || !isQC || formData.status !== 'draft'} placeholder="Masukkan Kode Proyek" /></div>
+                      <div><label className="block text-sm font-medium text-gray-700 mb-1">Nama Pelanggan</label><input type="text" value={unit.customerName || ''} onChange={(e) => updateUnitData(unitIndex, 'customerName', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 transition" disabled={isReadOnly || !isQC || formData.status !== 'draft'} placeholder="Masukkan Nama Pelanggan" /></div>
+                      <div><label className="block text-sm font-medium text-gray-700 mb-1">Lokasi Gedung</label><input type="text" value={unit.buildingLocation || ''} onChange={(e) => updateUnitData(unitIndex, 'buildingLocation', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 transition" disabled={isReadOnly || !isQC || formData.status !== 'draft'} placeholder="Masukkan Lokasi Gedung" /></div>
+                      <div><label className="block text-sm font-medium text-gray-700 mb-1">Tipe / Merk</label><input type="text" value={unit.elevatorType || ''} onChange={(e) => updateUnitData(unitIndex, 'elevatorType', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 transition" disabled={isReadOnly || !isQC || formData.status !== 'draft'} placeholder="Masukkan Tipe / Merk" /></div>
+                      <div><label className="block text-sm font-medium text-gray-700 mb-1">Kapasitas (kg)</label><input type="text" value={unit.capacity || ''} onChange={(e) => updateUnitData(unitIndex, 'capacity', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 transition" disabled={isReadOnly || !isQC || formData.status !== 'draft'} placeholder="Masukkan Kapasitas" /></div>
+                      <div><label className="block text-sm font-medium text-gray-700 mb-1">Kecepatan (m/menit)</label><input type="text" value={unit.speed || ''} onChange={(e) => updateUnitData(unitIndex, 'speed', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 transition" disabled={isReadOnly || !isQC || formData.status !== 'draft'} placeholder="Masukkan Kecepatan" /></div>
+                      <div><label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Pemeriksaan</label><input type="date" value={unit.inspectionDate || ''} onChange={(e) => updateUnitData(unitIndex, 'inspectionDate', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 transition" disabled={isReadOnly || !isQC || formData.status !== 'draft'} /></div>
+                      <div><label className="block text-sm font-medium text-gray-700 mb-1">Nama QC</label><input type="text" value={unit.qcName || ''} onChange={(e) => updateUnitData(unitIndex, 'qcName', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 transition" disabled={isReadOnly || !isQC || formData.status !== 'draft'} placeholder="Masukkan Nama QC" /></div>
                     </div>
                   </div>
 
@@ -2090,7 +2351,7 @@ function ReportForm({
                           const canApprove = isQC && !isReadOnly && (formData.status === 'maintenance_done' || formData.status === 'revision') && isNotGood && !isApproved;
 
                           return (
-                            <tr key={item.id} className="border-b border-gray-100 print:break-inside-avoid">
+                            <tr key={item.id} className="border-b border-gray-100 print:break-inside-avoid hover:bg-gray-50 transition-colors duration-150">
                               <td className="py-2 px-2 text-gray-600 align-top" style={{ fontSize: '13px' }}>{item.id}</td>
                               <td className="py-2 px-2 text-gray-800 align-top" style={{ fontSize: '13px' }}>{originalItem?.item || '-'}</td>
                               <td className="py-2 px-2 align-top">
@@ -2107,23 +2368,23 @@ function ReportForm({
                                 )}
                               </td>
                               <td className="py-2 px-2 align-top">
-                                {isEditable ? <textarea value={item.finding} onChange={(e) => handleMaintenanceFindingChange(unitIndex, item.id, e.target.value)} disabled={item.status === 'Good' || item.status === 'N/A'} placeholder={isNotGood ? 'Wajib diisi' : 'Temuan'} className={`w-full px-2 py-1 border rounded-md ${isNotGood && !item.finding ? 'border-red-300 bg-red-50' : 'border-gray-300'} ${item.status === 'Good' ? 'bg-gray-100' : 'bg-white'}`} rows={2} style={{ fontSize: '13px' }}/>
+                                {isEditable ? <textarea value={item.finding} onChange={(e) => handleMaintenanceFindingChange(unitIndex, item.id, e.target.value)} disabled={item.status === 'Good' || item.status === 'N/A'} placeholder={isNotGood ? 'Wajib diisi' : 'Temuan'} className={`w-full px-2 py-1 border rounded-md ${isNotGood && !item.finding ? 'border-red-300 bg-red-50' : 'border-gray-300'} ${item.status === 'Good' ? 'bg-gray-100' : 'bg-white'} transition`} rows={2} style={{ fontSize: '13px' }}/>
                                 : <div style={{ fontSize: '13px' }} className="text-gray-600">{item.finding || '-'}</div>}
                               </td>
                               <td className="py-2 px-2 align-top">
-                                {isEditable && isNotGood ? <div><input type="file" accept="image/*" onChange={(e) => handleMaintenancePhotoBeforeChange(unitIndex, item.id, e)} style={{ fontSize: '12px' }}/>{item.photoBefore && <div className="relative inline-block mt-1"><img src={item.photoBefore} alt="Before" className="w-20 h-20 object-cover rounded border"/></div>}</div>
+                                {isEditable && isNotGood ? <div><input type="file" accept="image/*" onChange={(e) => handleMaintenancePhotoBeforeChange(unitIndex, item.id, e)} style={{ fontSize: '12px' }} className="transition"/>{item.photoBefore && <div className="relative inline-block mt-1"><img src={item.photoBefore} alt="Before" className="w-20 h-20 object-cover rounded border"/></div>}</div>
                                 : item.photoBefore ? <img src={item.photoBefore} alt="Before" className="w-20 h-20 object-cover rounded border"/> : <span style={{ fontSize: '12px' }} className="text-gray-400">-</span>}
                               </td>
                               <td className="py-2 px-2 align-top">
-                                {isMaintEditable ? <div><input type="file" accept="image/*" onChange={(e) => handleMaintenancePhotoAfterChange(unitIndex, item.id, e)} style={{ fontSize: '12px' }}/>{item.photoAfter && <div className="relative inline-block mt-1"><img src={item.photoAfter} alt="After" className="w-20 h-20 object-cover rounded border"/></div>}{isNotGood && !item.photoAfter && <p style={{ fontSize: '12px' }} className="text-red-500">Wajib upload</p>}</div>
+                                {isMaintEditable ? <div><input type="file" accept="image/*" onChange={(e) => handleMaintenancePhotoAfterChange(unitIndex, item.id, e)} style={{ fontSize: '12px' }} className="transition"/>{item.photoAfter && <div className="relative inline-block mt-1"><img src={item.photoAfter} alt="After" className="w-20 h-20 object-cover rounded border"/></div>}{isNotGood && !item.photoAfter && <p style={{ fontSize: '12px' }} className="text-red-500">Wajib upload</p>}</div>
                                 : item.photoAfter ? <img src={item.photoAfter} alt="After" className="w-20 h-20 object-cover rounded border"/> : <span style={{ fontSize: '12px' }} className="text-gray-400">-</span>}
                               </td>
                               <td className="py-2 px-2 align-top">
-                                {isMaintEditable ? <textarea value={item.repairNote || ''} onChange={(e) => handleMaintenanceRepairNoteChange(unitIndex, item.id, e.target.value)} placeholder="Catatan perbaikan..." className={`w-full px-2 py-1 border rounded-md ${isNotGood && !item.repairNote ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} rows={2} style={{ fontSize: '13px' }}/>
+                                {isMaintEditable ? <textarea value={item.repairNote || ''} onChange={(e) => handleMaintenanceRepairNoteChange(unitIndex, item.id, e.target.value)} placeholder="Catatan perbaikan..." className={`w-full px-2 py-1 border rounded-md ${isNotGood && !item.repairNote ? 'border-red-300 bg-red-50' : 'border-gray-300'} transition`} rows={2} style={{ fontSize: '13px' }}/>
                                 : <div style={{ fontSize: '13px' }} className="text-gray-600">{item.repairNote || '-'}</div>}
                               </td>
                               <td className="py-2 px-2 align-top text-center">
-                                {canApprove ? <button type="button" onClick={() => handleApproveMaintenanceItem(unitIndex, item.id)} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-xs font-medium transition">✅ Approve</button>
+                                {canApprove ? <button type="button" onClick={() => handleApproveMaintenanceItem(unitIndex, item.id)} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 hover:shadow-md hover:scale-105">✅ Approve</button>
                                 : isApproved ? <span className="text-xs text-green-600 font-semibold">✅ Approved</span>
                                 : item.status === 'Not Good' && !isApproved ? <span className="text-xs text-gray-400">Menunggu Approve</span>
                                 : <span className="text-xs text-gray-300">-</span>}
@@ -2137,10 +2398,10 @@ function ReportForm({
 
                   <div className="p-4 bg-gray-50 border-t border-gray-200">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <div className="bg-white p-3 rounded-lg text-center border border-gray-200"><div className="text-xs text-gray-500">Total Item</div><div className="text-lg font-bold text-gray-700">{totalItems}</div></div>
-                      <div className="bg-green-50 p-3 rounded-lg text-center border border-green-200"><div className="text-xs text-green-600">Good + N/A</div><div className="text-lg font-bold text-green-700">{goodCount}</div></div>
-                      <div className="bg-red-50 p-3 rounded-lg text-center border border-red-200"><div className="text-xs text-red-600">Not Good</div><div className="text-lg font-bold text-red-700">{notGoodCount}</div></div>
-                      <div className="bg-blue-50 p-3 rounded-lg text-center border border-blue-200 col-span-2 md:col-span-1"><div className="text-xs text-blue-600">Score</div><div className="text-lg font-bold text-blue-700">{score}%</div></div>
+                      <div className="bg-white p-3 rounded-lg text-center border border-gray-200 hover:shadow-md transition"><div className="text-xs text-gray-500">Total Item</div><div className="text-lg font-bold text-gray-700">{totalItems}</div></div>
+                      <div className="bg-green-50 p-3 rounded-lg text-center border border-green-200 hover:shadow-md transition"><div className="text-xs text-green-600">Good + N/A</div><div className="text-lg font-bold text-green-700">{goodCount}</div></div>
+                      <div className="bg-red-50 p-3 rounded-lg text-center border border-red-200 hover:shadow-md transition"><div className="text-xs text-red-600">Not Good</div><div className="text-lg font-bold text-red-700">{notGoodCount}</div></div>
+                      <div className="bg-blue-50 p-3 rounded-lg text-center border border-blue-200 col-span-2 md:col-span-1 hover:shadow-md transition"><div className="text-xs text-blue-600">Score</div><div className="text-lg font-bold text-blue-700">{score}%</div></div>
                     </div>
                   </div>
                 </div>
@@ -2154,6 +2415,25 @@ function ReportForm({
           <p>© 2026 PT Louserindo Megah Permai - ELEVATE QC</p>
         </div>
       </div>
+
+      <style>{`
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-5px); }
+          75% { transform: translateX(5px); }
+        }
+        .animate-fade-in { animation: fade-in 0.3s ease-out; }
+        .animate-shake { animation: shake 0.3s ease-in-out; }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+      `}</style>
     </form>
   );
 }
